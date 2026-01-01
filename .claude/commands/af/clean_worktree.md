@@ -4,7 +4,7 @@ Remove a git worktree and its associated branch.
 
 ## Variables
 
-worktree_name: $ARGUMENT
+branch: $ARGUMENT
 
 ## Instructions
 
@@ -17,7 +17,7 @@ worktree_name: $ARGUMENT
 
 Execute these steps in order:
 
-0. Set <worktree_dir> to the value of <worktree_name> where symbols / and \ are replaced with symbol -
+0. Set <worktree_dir> to the value of <branch> where symbols / and \ are replaced with symbol -
 
 1. **Check worktree status**:
 
@@ -46,7 +46,7 @@ Execute these steps in order:
 
    ```bash
    # Verify worktree is gone
-   git worktree list | grep <worktree_name>
+   git worktree list | grep <branch>
    ```
 
 ## Error Handling
@@ -59,8 +59,8 @@ Execute these steps in order:
 
 Report one of the following:
 
-- Success: "Worktree '<worktree_name>' cleaned up successfully"
-- Already clean: "Worktree '<worktree_name>' does not exist"
+- Success: "Worktree '<branch>' cleaned up successfully"
+- Already clean: "Worktree '<branch>' does not exist"
 - Error: "Failed to clean worktree: <error message>"
 
 ## Safety Checks
@@ -69,7 +69,7 @@ Before removing:
 
 - List any uncommitted changes in the worktree
 - Show any unpushed commits on the branch
-- Confirm the worktree path is correct (.worktrees/<worktree_name>)
+- Confirm the worktree path is correct (.worktrees/<worktree_dir>)
 
 ## Notes
 

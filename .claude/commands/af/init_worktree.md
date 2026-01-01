@@ -4,11 +4,11 @@ Create a new git worktree for an agent to work in isolation.
 
 ## Variables
 
-worktree_name: $1
+branch: $1
 
 ## Instructions
 
-0. Set <worktree_dir> to the value of <worktree_name> where symbols / and \ are replaced with symbol -
+0. Set <worktree_dir> to the value of <branch> where symbols / and \ are replaced with symbol -
 1. Create a new git worktree in the `.worktrees/<worktree_dir>` directory with sparse checkout
 2. Base the worktree on the current branch
 3. Copy the `.env` file from the root directory to the worktree (if it exists)
@@ -31,7 +31,7 @@ Execute these steps in order:
 3. **Create the git worktree without checkout**:
 
    ```bash
-   git worktree add --no-checkout .worktrees/<worktree_dir> -b <worktree_name>
+   git worktree add --no-checkout .worktrees/<worktree_dir> -b <branch>
    ```
 
 4. **Change directory to the worktree**:
@@ -68,8 +68,8 @@ ls -la  # Should contain project's files (plus .git)
 
 Report one of the following:
 
-- Success: "Worktree '<worktree_name>' created successfully at .worktrees/<worktree_dir>"
-- Already exists: "Worktree '<worktree_name>' already exists at .worktrees/<worktree_dir>"
+- Success: "Worktree '<branch>' created successfully at .worktrees/<worktree_dir>"
+- Already exists: "Worktree '<branch>' already exists at .worktrees/<worktree_dir>"
 - Error: "Failed to create worktree: <error message>"
 
 ## Notes
