@@ -2,7 +2,7 @@
 
 import pytest
 
-from agent.base import AgentConfig, AgentResult
+from agent.base import AgentConfig, AgentResult, ModelMapping
 
 
 class TestAgentResult:
@@ -86,3 +86,96 @@ class TestAgentConfig:
         assert config.append_system_prompt == "Be concise"
         assert config.opencode_agent == "coder"
         assert config.files == ["file1.py", "file2.py"]
+
+
+class TestModelMapping:
+    """Tests for ModelMapping class."""
+
+    def test_get_model_claude_code_thinking(self):
+        """Test getting thinking model for claude-code."""
+        model = ModelMapping.get_model("claude-code", "thinking")
+        assert model == "opus"
+
+    def test_get_model_claude_code_standard(self):
+        """Test getting standard model for claude-code."""
+        model = ModelMapping.get_model("claude-code", "standard")
+        assert model == "sonnet"
+
+    def test_get_model_claude_code_light(self):
+        """Test getting light model for claude-code."""
+        model = ModelMapping.get_model("claude-code", "light")
+        assert model == "haiku"
+
+    def test_get_model_opencode_thinking(self):
+        """Test getting thinking model for opencode."""
+        model = ModelMapping.get_model("opencode", "thinking")
+        assert model == "github-copilot/claude-opus-4.5"
+
+    def test_get_model_opencode_standard(self):
+        """Test getting standard model for opencode."""
+        model = ModelMapping.get_model("opencode", "standard")
+        assert model == "github-copilot/claude-sonnet-4.5"
+
+    def test_get_model_opencode_light(self):
+        """Test getting light model for opencode."""
+        model = ModelMapping.get_model("opencode", "light")
+        assert model == "github-copilot/claude-haiku-4.5"
+
+    def test_get_model_unknown_agent(self):
+        """Test that unknown agent returns None."""
+        model = ModelMapping.get_model("unknown-agent", "standard")
+        assert model is None
+
+    def test_get_model_unknown_model_type(self):
+        """Test that unknown model type returns None."""
+        model = ModelMapping.get_model("claude-code", "unknown-type")
+        assert model is None
+
+    def test_list_agents(self):
+        """Test listing registered agents."""
+        agents = ModelMapping.list_agents()
+        assert "claude-code" in agents
+        assert "opencode" in agents
+
+    def test_list_models(self):
+        """Test listing models for an agent."""
+        models = ModelMapping.list_models("claude-code")
+        assert models is not None
+        assert "thinking" in models
+        assert "standard" in models
+        assert "light" in models
+
+    def test_list_models_unknown_agent(self):
+        """Test listing models for unknown agent returns None."""
+        models = ModelMapping.list_models("unknown-agent")
+        assert models is None
+
+    def test_register_agent(self):
+        """Test registering a new agent."""
+        ModelMapping.register_agent(
+            "test-agent",
+            {
+                "thinking": "test-opus",
+                "standard": "test-sonnet",
+                "light": "test-haiku",
+            },
+        )
+
+        assert ModelMapping.get_model("test-agent", "thinking") == "test-opus"
+        assert ModelMapping.get_model("test-agent", "standard") == "test-sonnet"
+        assert ModelMapping.get_model("test-agent", "light") == "test-haiku"
+
+        # Clean up
+        del ModelMapping._mappings["test-agent"]
+
+    def test_update_model(self):
+        """Test updating a specific model mapping."""
+        # Save original value
+        original = ModelMapping.get_model("claude-code", "thinking")
+
+        # Update
+        ModelMapping.update_model("claude-code", "thinking", "new-opus")
+        assert ModelMapping.get_model("claude-code", "thinking") == "new-opus"
+
+        # Restore
+        ModelMapping.update_model("claude-code", "thinking", original)

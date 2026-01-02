@@ -6,7 +6,7 @@ import subprocess
 import time
 from typing import Any
 
-from .base import Agent, AgentConfig, AgentResult
+from .base import Agent, AgentConfig, AgentResult, ModelMapping
 from .exceptions import (
     AgentExecutionError,
     AgentNotFoundError,
@@ -92,9 +92,14 @@ class OpenCodeAgent:
         if config.output_format == "json":
             cmd.extend(["--format", "json"])
 
-        # Model selection (OpenCode uses provider/model format)
+        # Model selection - resolve abstract model type to concrete model name
         if config.model:
-            cmd.extend(["--model", config.model])
+            concrete_model = ModelMapping.get_model(self.name, config.model)
+            if concrete_model:
+                cmd.extend(["--model", concrete_model])
+            else:
+                # Fall back to using the model as-is if no mapping exists
+                cmd.extend(["--model", config.model])
 
         # Agent selection
         if config.opencode_agent:
@@ -120,6 +125,9 @@ class OpenCodeAgent:
         OpenCode outputs NDJSON (Newline Delimited JSON) where each line
         is a separate JSON object representing an event.
         """
+
+        print(f"output: {output}")
+
         lines = output.strip().split("\n")
         events = []
 

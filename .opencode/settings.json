@@ -18,6 +18,9 @@
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(rm -rf:*)"
-    ]
+    ],
+  },
+  "permission": {
+    "external_directory": "allow"
   }
 }

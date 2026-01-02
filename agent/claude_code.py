@@ -6,7 +6,7 @@ import subprocess
 import time
 from typing import Any
 
-from .base import Agent, AgentConfig, AgentResult
+from .base import Agent, AgentConfig, AgentResult, ModelMapping
 from .exceptions import (
     AgentExecutionError,
     AgentNotFoundError,
@@ -91,9 +91,14 @@ class ClaudeCodeAgent:
         # Output format
         cmd.extend(["--output-format", config.output_format])
 
-        # Model selection
+        # Model selection - resolve abstract model type to concrete model name
         if config.model:
-            cmd.extend(["--model", config.model])
+            concrete_model = ModelMapping.get_model(self.name, config.model)
+            if concrete_model:
+                cmd.extend(["--model", concrete_model])
+            else:
+                # Fall back to using the model as-is if no mapping exists
+                cmd.extend(["--model", config.model])
 
         # Skip permissions (for automated workflows)
         if config.skip_permissions:

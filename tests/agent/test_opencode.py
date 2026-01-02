@@ -35,14 +35,45 @@ class TestOpenCodeAgent:
         assert "json" in cmd
 
     def test_build_command_with_model(self):
-        """Test command building with model selection."""
+        """Test command building with direct model name (fallback behavior)."""
         agent = OpenCodeAgent()
         config = AgentConfig(model="anthropic/claude-sonnet")
         cmd = agent._build_command("test", config)
 
         assert "--model" in cmd
         model_idx = cmd.index("--model")
+        # Direct model name should pass through as-is when no mapping exists
         assert cmd[model_idx + 1] == "anthropic/claude-sonnet"
+
+    def test_build_command_with_model_type_thinking(self):
+        """Test command building with 'thinking' model type."""
+        agent = OpenCodeAgent()
+        config = AgentConfig(model="thinking")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "github-copilot/claude-opus-4.5"
+
+    def test_build_command_with_model_type_standard(self):
+        """Test command building with 'standard' model type."""
+        agent = OpenCodeAgent()
+        config = AgentConfig(model="standard")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "github-copilot/claude-sonnet-4.5"
+
+    def test_build_command_with_model_type_light(self):
+        """Test command building with 'light' model type."""
+        agent = OpenCodeAgent()
+        config = AgentConfig(model="light")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "github-copilot/claude-haiku-4.5"
 
     def test_build_command_with_agent(self):
         """Test command building with agent selection."""

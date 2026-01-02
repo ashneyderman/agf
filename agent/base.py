@@ -1,8 +1,120 @@
 """Base abstractions for the agent package."""
 
+from enum import Enum
 from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
+
+
+class AgentType(str, Enum):
+    """Enumeration of available agent types."""
+
+    CLAUDE_CODE = "claude-code"
+    OPENCODE = "opencode"
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """Return list of all agent type values."""
+        return [member.value for member in cls]
+
+    @classmethod
+    def default(cls) -> str:
+        """Return the default agent type value."""
+        return cls.CLAUDE_CODE.value
+
+
+class ModelType(str, Enum):
+    """Enumeration of available model types."""
+
+    THINKING = "thinking"
+    STANDARD = "standard"
+    LIGHT = "light"
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """Return list of all model type values."""
+        return [member.value for member in cls]
+
+    @classmethod
+    def default(cls) -> str:
+        """Return the default model type value."""
+        return cls.STANDARD.value
+
+
+class ModelMapping:
+    """Maps abstract model types to concrete model names for each agent.
+
+    This class provides a centralized way to map model types (thinking, standard, light)
+    to the actual model identifiers expected by each agent CLI.
+
+    Example:
+        >>> ModelMapping.get_model("claude-code", "thinking")
+        "opus-4.5"
+        >>> ModelMapping.get_model("opencode", "standard")
+        "github-copilot/claude-sonnet-4.5"
+    """
+
+    _mappings: dict[str, dict[str, str]] = {
+        "claude-code": {
+            "thinking": "opus",
+            "standard": "sonnet",
+            "light": "haiku",
+        },
+        "opencode": {
+            "thinking": "github-copilot/claude-opus-4.5",
+            "standard": "github-copilot/claude-sonnet-4.5",
+            "light": "github-copilot/claude-haiku-4.5",
+        },
+    }
+
+    @classmethod
+    def get_model(cls, agent_name: str, model_type: str) -> str | None:
+        """Get the concrete model name for an agent and model type.
+
+        Args:
+            agent_name: The agent identifier (e.g., "claude-code", "opencode")
+            model_type: The abstract model type (e.g., "thinking", "standard", "light")
+
+        Returns:
+            The concrete model name, or None if no mapping exists.
+        """
+        agent_models = cls._mappings.get(agent_name)
+        if agent_models is None:
+            return None
+        return agent_models.get(model_type)
+
+    @classmethod
+    def register_agent(cls, agent_name: str, models: dict[str, str]) -> None:
+        """Register model mappings for a new agent.
+
+        Args:
+            agent_name: The agent identifier
+            models: A dict mapping model types to concrete model names
+        """
+        cls._mappings[agent_name] = models
+
+    @classmethod
+    def update_model(cls, agent_name: str, model_type: str, model_name: str) -> None:
+        """Update a specific model mapping for an agent.
+
+        Args:
+            agent_name: The agent identifier
+            model_type: The abstract model type
+            model_name: The new concrete model name
+        """
+        if agent_name not in cls._mappings:
+            cls._mappings[agent_name] = {}
+        cls._mappings[agent_name][model_type] = model_name
+
+    @classmethod
+    def list_agents(cls) -> list[str]:
+        """List all agents with registered model mappings."""
+        return list(cls._mappings.keys())
+
+    @classmethod
+    def list_models(cls, agent_name: str) -> dict[str, str] | None:
+        """List all model mappings for an agent."""
+        return cls._mappings.get(agent_name)
 
 
 class AgentResult(BaseModel):

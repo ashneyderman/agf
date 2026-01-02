@@ -36,14 +36,45 @@ class TestClaudeCodeAgent:
         assert "json" in cmd
 
     def test_build_command_with_model(self):
-        """Test command building with model selection."""
+        """Test command building with direct model name (fallback behavior)."""
         agent = ClaudeCodeAgent()
         config = AgentConfig(model="sonnet")
         cmd = agent._build_command("test", config)
 
         assert "--model" in cmd
         model_idx = cmd.index("--model")
+        # Direct model name should pass through as-is when no mapping exists
         assert cmd[model_idx + 1] == "sonnet"
+
+    def test_build_command_with_model_type_thinking(self):
+        """Test command building with 'thinking' model type."""
+        agent = ClaudeCodeAgent()
+        config = AgentConfig(model="thinking")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "opus"
+
+    def test_build_command_with_model_type_standard(self):
+        """Test command building with 'standard' model type."""
+        agent = ClaudeCodeAgent()
+        config = AgentConfig(model="standard")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "sonnet"
+
+    def test_build_command_with_model_type_light(self):
+        """Test command building with 'light' model type."""
+        agent = ClaudeCodeAgent()
+        config = AgentConfig(model="light")
+        cmd = agent._build_command("test", config)
+
+        assert "--model" in cmd
+        model_idx = cmd.index("--model")
+        assert cmd[model_idx + 1] == "haiku"
 
     def test_build_command_with_skip_permissions(self):
         """Test command building with skip permissions flag."""
