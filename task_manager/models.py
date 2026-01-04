@@ -54,11 +54,3 @@ class Worktree(BaseModel):
         if not v or not v.strip():
             raise ValueError("worktree_name cannot be empty")
         return v
-
-
-class WorktreeInput(BaseModel):
-    """
-    Input model for parsing JSON task data.
-    """
-    worktree_name: str
-    tasks_to_start: list[dict]

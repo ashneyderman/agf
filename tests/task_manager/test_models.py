@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from task_manager.models import Task, Worktree, WorktreeInput, TaskStatus
+from task_manager.models import Task, Worktree, TaskStatus
 
 
 def test_task_creation_with_all_fields():
@@ -116,19 +116,3 @@ def test_worktree_id_can_be_set():
 
     assert worktree.worktree_id == "PROJ-1234"
     assert worktree.worktree_name == "feature-xyz"
-
-
-def test_worktree_input_parsing():
-    """Test WorktreeInput parsing from dict-like structure"""
-    input_data = WorktreeInput(
-        worktree_name="feature-login",
-        tasks_to_start=[
-            {"description": "Task 1", "tags": ["auth"]},
-            {"description": "Task 2", "tags": []},
-        ]
-    )
-
-    assert input_data.worktree_name == "feature-login"
-    assert len(input_data.tasks_to_start) == 2
-    assert input_data.tasks_to_start[0]["description"] == "Task 1"
-    assert input_data.tasks_to_start[0]["tags"] == ["auth"]
