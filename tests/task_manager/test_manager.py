@@ -310,7 +310,7 @@ class TestTaskManagerFetchNextAvailable:
     """Tests for fetch_next_available_tasks method"""
 
     def test_fetch_returns_not_started_tasks(self):
-        """Test that NOT_STARTED tasks are returned"""
+        """Test that only the first NOT_STARTED task is returned per worktree"""
         TaskManager._instance = None
 
         mock_source = Mock()
@@ -325,12 +325,14 @@ class TestTaskManagerFetchNextAvailable:
 
         available = manager.fetch_next_available_tasks(count=2)
 
-        assert len(available) == 2
-        assert available[0].task_id == "taskab"
-        assert available[1].task_id == "taskcd"
+        # Only the first task should be returned (one task per worktree)
+        assert len(available) == 1
+        wt, task = available[0]
+        assert wt.worktree_name == "test-wt"
+        assert task.task_id == "taskab"
 
     def test_fetch_skips_in_progress_tasks(self):
-        """Test that IN_PROGRESS tasks are not returned"""
+        """Test that tasks are not eligible when a preceding task is IN_PROGRESS"""
         TaskManager._instance = None
 
         mock_source = Mock()
@@ -345,18 +347,18 @@ class TestTaskManagerFetchNextAvailable:
 
         available = manager.fetch_next_available_tasks(count=2)
 
-        assert len(available) == 1
-        assert available[0].task_id == "taskcd"
+        # Task 2 is not eligible because Task 1 is IN_PROGRESS (not COMPLETED)
+        assert len(available) == 0
 
-    def test_fetch_blocked_available_when_preceding_completed(self):
-        """Test that BLOCKED tasks are available when all preceding are COMPLETED"""
+    def test_fetch_not_started_available_when_preceding_completed(self):
+        """Test that NOT_STARTED tasks are eligible when all preceding are COMPLETED"""
         TaskManager._instance = None
 
         mock_source = Mock()
         tasks = [
             Task(task_id="taskab", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0),
             Task(task_id="taskcd", description="Task 2", status=TaskStatus.COMPLETED, sequence_number=1),
-            Task(task_id="taskef", description="Task 3", status=TaskStatus.BLOCKED, sequence_number=2),
+            Task(task_id="taskef", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
         ]
         worktree = Worktree(worktree_name="test-wt", tasks=tasks)
         mock_source.list_worktrees.return_value = [worktree]
@@ -366,17 +368,19 @@ class TestTaskManagerFetchNextAvailable:
         available = manager.fetch_next_available_tasks(count=5)
 
         assert len(available) == 1
-        assert available[0].task_id == "taskef"
+        wt, task = available[0]
+        assert wt.worktree_name == "test-wt"
+        assert task.task_id == "taskef"
 
-    def test_fetch_blocked_not_available_when_preceding_not_completed(self):
-        """Test that BLOCKED tasks are not available when preceding tasks incomplete"""
+    def test_fetch_only_first_not_started_when_preceding_not_completed(self):
+        """Test that only the first NOT_STARTED task is available"""
         TaskManager._instance = None
 
         mock_source = Mock()
         tasks = [
             Task(task_id="taskab", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0),
             Task(task_id="taskcd", description="Task 2", status=TaskStatus.NOT_STARTED, sequence_number=1),
-            Task(task_id="taskef", description="Task 3", status=TaskStatus.BLOCKED, sequence_number=2),
+            Task(task_id="taskef", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
         ]
         worktree = Worktree(worktree_name="test-wt", tasks=tasks)
         mock_source.list_worktrees.return_value = [worktree]
@@ -385,18 +389,20 @@ class TestTaskManagerFetchNextAvailable:
 
         available = manager.fetch_next_available_tasks(count=5)
 
-        # Should get TASK02 but not TASK03 (blocked by TASK02)
+        # Should get Task 2 only (one task per worktree, first NOT_STARTED)
         assert len(available) == 1
-        assert available[0].task_id == "taskcd"
+        wt, task = available[0]
+        assert wt.worktree_name == "test-wt"
+        assert task.task_id == "taskcd"
 
-    def test_fetch_blocked_not_available_when_preceding_failed(self):
-        """Test that BLOCKED tasks are not available when preceding task failed"""
+    def test_fetch_not_available_when_preceding_failed(self):
+        """Test that tasks are not available when preceding task failed"""
         TaskManager._instance = None
 
         mock_source = Mock()
         tasks = [
             Task(task_id="taskab", description="Task 1", status=TaskStatus.FAILED, sequence_number=0),
-            Task(task_id="taskcd", description="Task 2", status=TaskStatus.BLOCKED, sequence_number=1),
+            Task(task_id="taskcd", description="Task 2", status=TaskStatus.NOT_STARTED, sequence_number=1),
         ]
         worktree = Worktree(worktree_name="test-wt", tasks=tasks)
         mock_source.list_worktrees.return_value = [worktree]
@@ -408,23 +414,26 @@ class TestTaskManagerFetchNextAvailable:
         assert len(available) == 0
 
     def test_fetch_respects_count_parameter(self):
-        """Test that fetch respects the count parameter"""
+        """Test that fetch respects the count parameter with multiple worktrees"""
         TaskManager._instance = None
 
         mock_source = Mock()
-        # Generate 10 unique task IDs using letters only
-        task_ids = ["tskabc", "tskdef", "tskghi", "tskjkl", "tskmno", "tskpqr", "tskstu", "tskwxy", "tskzab", "tskzcd"]
-        tasks = [
-            Task(task_id=task_ids[i], description=f"Task {i}", status=TaskStatus.NOT_STARTED, sequence_number=i)
-            for i in range(10)
-        ]
-        worktree = Worktree(worktree_name="test-wt", tasks=tasks)
-        mock_source.list_worktrees.return_value = [worktree]
+        # Create 5 worktrees with one task each
+        task_ids = ["task0a", "task1b", "task2c", "task3d", "task4e"]
+        worktrees = []
+        for i in range(5):
+            tasks = [
+                Task(task_id=task_ids[i], description=f"WT{i} Task", status=TaskStatus.NOT_STARTED, sequence_number=0)
+            ]
+            worktrees.append(Worktree(worktree_name=f"wt{i}", tasks=tasks))
+
+        mock_source.list_worktrees.return_value = worktrees
 
         manager = TaskManager(mock_source)
 
         available = manager.fetch_next_available_tasks(count=3)
 
+        # Should get 3 tasks from 3 different worktrees
         assert len(available) == 3
 
     def test_fetch_from_multiple_worktrees(self):
@@ -449,9 +458,116 @@ class TestTaskManagerFetchNextAvailable:
         available = manager.fetch_next_available_tasks(count=5)
 
         assert len(available) == 2
-        task_ids = {task.task_id for task in available}
+        # Unpack tuples
+        task_ids = {task.task_id for wt, task in available}
+        worktree_names = {wt.worktree_name for wt, task in available}
         assert "wtqtsk" in task_ids
         assert "wtwtsk" in task_ids
+        assert "wt1" in worktree_names
+        assert "wt2" in worktree_names
+
+    def test_prompt_example_feature_0_in_progress(self):
+        """Test prompt example: feature 0 with task 2 in progress, task 3 not eligible"""
+        TaskManager._instance = None
+
+        mock_source = Mock()
+        tasks = [
+            Task(task_id="task1a", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="task2b", description="Task 2", status=TaskStatus.IN_PROGRESS, sequence_number=1),
+            Task(task_id="task3c", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+        worktree = Worktree(worktree_name="feature-0", tasks=tasks)
+        mock_source.list_worktrees.return_value = [worktree]
+
+        manager = TaskManager(mock_source)
+        available = manager.fetch_next_available_tasks(count=5)
+
+        # Task 3 is not eligible because Task 2 is IN_PROGRESS
+        assert len(available) == 0
+
+    def test_prompt_example_feature_1_eligible(self):
+        """Test prompt example: feature 1 with task 1 completed, task 2 eligible"""
+        TaskManager._instance = None
+
+        mock_source = Mock()
+        tasks = [
+            Task(task_id="task1x", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="task2y", description="Task 2", status=TaskStatus.NOT_STARTED, sequence_number=1),
+            Task(task_id="task3z", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+        worktree = Worktree(worktree_name="feature-1", tasks=tasks)
+        mock_source.list_worktrees.return_value = [worktree]
+
+        manager = TaskManager(mock_source)
+        available = manager.fetch_next_available_tasks(count=5)
+
+        # Only Task 2 should be eligible (first NOT_STARTED task)
+        assert len(available) == 1
+        wt, task = available[0]
+        assert wt.worktree_name == "feature-1"
+        assert task.task_id == "task2y"
+
+    def test_prompt_example_feature_2_failed(self):
+        """Test prompt example: feature 2 with task 2 failed, task 3 not eligible"""
+        TaskManager._instance = None
+
+        mock_source = Mock()
+        tasks = [
+            Task(task_id="task1p", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="task2q", description="Task 2", status=TaskStatus.FAILED, sequence_number=1),
+            Task(task_id="task3r", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+        worktree = Worktree(worktree_name="feature-2", tasks=tasks)
+        mock_source.list_worktrees.return_value = [worktree]
+
+        manager = TaskManager(mock_source)
+        available = manager.fetch_next_available_tasks(count=5)
+
+        # Task 3 is not eligible because Task 2 FAILED
+        assert len(available) == 0
+
+    def test_all_three_prompt_examples_together(self):
+        """Test all three prompt examples together to verify only feature-1 task-2 is eligible"""
+        TaskManager._instance = None
+
+        mock_source = Mock()
+
+        # Feature 0: Task 1 completed, Task 2 in progress, Task 3 not started
+        feature_0_tasks = [
+            Task(task_id="f0tsk1", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="f0tsk2", description="Task 2", status=TaskStatus.IN_PROGRESS, sequence_number=1),
+            Task(task_id="f0tsk3", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+
+        # Feature 1: Task 1 completed, Task 2 and 3 not started
+        feature_1_tasks = [
+            Task(task_id="f1tsk1", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="f1tsk2", description="Task 2", status=TaskStatus.NOT_STARTED, sequence_number=1),
+            Task(task_id="f1tsk3", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+
+        # Feature 2: Task 1 completed, Task 2 failed, Task 3 not started
+        feature_2_tasks = [
+            Task(task_id="f2tsk1", description="Task 1", status=TaskStatus.COMPLETED, sequence_number=0, commit_sha="sha001"),
+            Task(task_id="f2tsk2", description="Task 2", status=TaskStatus.FAILED, sequence_number=1),
+            Task(task_id="f2tsk3", description="Task 3", status=TaskStatus.NOT_STARTED, sequence_number=2),
+        ]
+
+        worktrees = [
+            Worktree(worktree_name="feature-0", tasks=feature_0_tasks),
+            Worktree(worktree_name="feature-1", tasks=feature_1_tasks),
+            Worktree(worktree_name="feature-2", tasks=feature_2_tasks),
+        ]
+        mock_source.list_worktrees.return_value = worktrees
+
+        manager = TaskManager(mock_source)
+        available = manager.fetch_next_available_tasks(count=5)
+
+        # Only feature-1 Task 2 should be eligible
+        assert len(available) == 1
+        wt, task = available[0]
+        assert wt.worktree_name == "feature-1"
+        assert task.task_id == "f1tsk2"
 
 
 class TestTaskManagerGetters:

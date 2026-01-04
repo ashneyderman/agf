@@ -161,29 +161,30 @@ class TaskManager:
         # Call source-specific error marking
         self._task_source.mark_task_error(worktree_name, task_id, error_msg)
 
-    def fetch_next_available_tasks(self, count: int = 1) -> list[Task]:
+    def fetch_next_available_tasks(self, count: int = 1) -> list[tuple[Worktree, Task]]:
         """
         Fetch next available tasks for execution.
 
-        A task is available if:
-        - status == NOT_STARTED, OR
-        - status == BLOCKED and all preceding tasks are COMPLETED
+        Returns at most one task per worktree. A task is eligible if and only if:
+        - All tasks above it (lower sequence numbers) have status COMPLETED
+        - Its own status is NOT_STARTED
 
         Args:
             count: Maximum number of tasks to return
 
         Returns:
-            List of available Task objects (up to count)
+            List of tuples (Worktree, Task) for available tasks (up to count)
         """
         available_tasks = []
 
         for worktree in self._worktrees.values():
-            for task in worktree.tasks:
-                if len(available_tasks) >= count:
-                    return available_tasks
+            if len(available_tasks) >= count:
+                break
 
-                if self._is_task_available(worktree, task):
-                    available_tasks.append(task)
+            # Find the first eligible task in this worktree
+            eligible_task = self._find_next_eligible_task(worktree)
+            if eligible_task:
+                available_tasks.append((worktree, eligible_task))
 
         return available_tasks
 
@@ -222,31 +223,36 @@ class TaskManager:
                 return task
         return None
 
-    def _is_task_available(self, worktree: Worktree, task: Task) -> bool:
+    def _find_next_eligible_task(self, worktree: Worktree) -> Task | None:
         """
-        Check if a task is available for execution.
+        Find the next eligible task in a worktree.
+
+        A task is eligible if and only if:
+        - All tasks above it (lower sequence numbers) have status COMPLETED
+        - Its own status is NOT_STARTED
 
         Args:
-            worktree: Worktree containing the task
-            task: Task to check
+            worktree: Worktree to search
 
         Returns:
-            True if task is available, False otherwise
+            The first eligible task, or None if no task is eligible
         """
-        # NOT_STARTED tasks are always available
-        if task.status == TaskStatus.NOT_STARTED:
-            return True
+        for task in worktree.tasks:
+            # Only NOT_STARTED tasks can be eligible
+            if task.status != TaskStatus.NOT_STARTED:
+                continue
 
-        # BLOCKED tasks are available if all preceding tasks are COMPLETED
-        if task.status == TaskStatus.BLOCKED:
+            # Check if all preceding tasks are COMPLETED
+            all_preceding_completed = True
             for other_task in worktree.tasks:
-                # Check all tasks with lower sequence number
                 if other_task.sequence_number < task.sequence_number:
                     if other_task.status != TaskStatus.COMPLETED:
-                        # A preceding task is not completed, so this task is blocked
-                        return False
-            # All preceding tasks are completed
-            return True
+                        all_preceding_completed = False
+                        break
 
-        # IN_PROGRESS, COMPLETED, and FAILED tasks are not available
-        return False
+            # If all preceding tasks are completed, this task is eligible
+            if all_preceding_completed:
+                return task
+
+        # No eligible task found
+        return None

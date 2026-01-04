@@ -59,7 +59,8 @@ class TestEndToEndWorkflow:
             # Fetch next available task
             available = manager.fetch_next_available_tasks(count=1)
             assert len(available) == 1
-            assert available[0].description == "Task to complete"
+            wt, task = available[0]
+            assert task.description == "Task to complete"
 
             # Update to IN_PROGRESS
             manager.update_task_status("lifecycle-test", task_id, TaskStatus.IN_PROGRESS)
@@ -82,7 +83,7 @@ class TestEndToEndWorkflow:
             temp_path.unlink()
 
     def test_blocked_task_transitions(self, temp_task_file):
-        """Test blocked task becoming available after prerequisite completion"""
+        """Test task becoming available after prerequisite completion"""
         # Reset singleton
         TaskManager._instance = None
 
@@ -90,21 +91,31 @@ class TestEndToEndWorkflow:
         source = MarkdownTaskSource(str(temp_task_file))
         manager = TaskManager(source)
 
-        # Initially, taskcd is blocked because taskab is not completed
+        # Initially, only taskab should be available (first NOT_STARTED task)
+        # taskcd is BLOCKED, third task is NOT_STARTED but blocked by taskcd being incomplete
         available = manager.fetch_next_available_tasks(count=5)
 
-        # Should get taskab and third task, but not taskcd (blocked)
-        available_ids = {task.task_id for task in available}
-        assert "taskab" in available_ids
-        assert "taskcd" not in available_ids
+        # Should only get taskab (one task per worktree, first eligible NOT_STARTED)
+        assert len(available) == 1
+        wt, task = available[0]
+        assert task.task_id == "taskab"
 
         # Complete taskab
         manager.update_task_status("integration-test", "taskab", TaskStatus.COMPLETED, "sha001")
 
-        # Now taskcd should be available
+        # Now taskcd is BLOCKED (not NOT_STARTED), so it's not eligible
+        # Third task is NOT_STARTED but taskcd (seq 1) is not COMPLETED, so third task is also not eligible
         available = manager.fetch_next_available_tasks(count=5)
-        available_ids = {task.task_id for task in available}
-        assert "taskcd" in available_ids
+        assert len(available) == 0
+
+        # Complete taskcd to unblock the third task
+        manager.update_task_status("integration-test", "taskcd", TaskStatus.COMPLETED, "sha002")
+
+        # Now the third task should be available
+        available = manager.fetch_next_available_tasks(count=5)
+        assert len(available) == 1
+        wt, task = available[0]
+        assert task.sequence_number == 2
 
     def test_adding_tasks_updates_existing_file(self):
         """Test that task IDs are written to existing tasks in file"""
@@ -175,10 +186,10 @@ class TestEndToEndWorkflow:
             # Fetch available tasks from both worktrees
             available = manager.fetch_next_available_tasks(count=5)
 
-            # Should get tasks from both worktrees
+            # Should get tasks from both worktrees (one per worktree)
             assert len(available) == 2  # WT1 Task 1 and WT2 Task 1
 
-            descriptions = {task.description for task in available}
+            descriptions = {task.description for wt, task in available}
             assert "WT1 Task 1" in descriptions
             assert "WT2 Task 1" in descriptions
 
