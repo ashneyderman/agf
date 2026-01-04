@@ -1,7 +1,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-from task_manager import TaskManager, MarkdownTaskSource, WorktreeInput, TaskStatus
+from task_manager import TaskManager, MarkdownTaskSource, TaskStatus
 
 
 @pytest.fixture
@@ -229,14 +229,14 @@ class TestEndToEndWorkflow:
         finally:
             temp_path.unlink()
 
-    def test_task_deduplication_workflow(self):
-        """Test that duplicate tasks are not added"""
+    def test_refresh_with_external_file_changes(self):
+        """Test refresh after external file modifications"""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
-            f.write("""# Dedup Test
+            f.write("""# Refresh Test
 
-## Git Worktree dedup-test
+## Git Worktree refresh-test
 
-- [] Existing task
+- [] Initial task
 """)
             temp_path = Path(f.name)
 
@@ -247,27 +247,173 @@ class TestEndToEndWorkflow:
             source = MarkdownTaskSource(str(temp_path))
             manager = TaskManager(source)
 
-            # Try to add the same task again
-            new_tasks = [
-                WorktreeInput(
-                    worktree_name="dedup-test",
-                    tasks_to_start=[
-                        {"description": "Existing task", "tags": []},
-                        {"description": "New unique task", "tags": []},
-                    ]
-                )
-            ]
+            # Verify initial state
+            worktree = manager.get_worktree("refresh-test")
+            assert len(worktree.tasks) == 1
+            assert worktree.tasks[0].description == "Initial task"
 
-            manager.add_tasks(new_tasks)
+            # Mark task as in progress (writes to file)
+            task_id = worktree.tasks[0].task_id
+            manager.update_task_status("refresh-test", task_id, TaskStatus.IN_PROGRESS)
 
-            worktree = manager.get_worktree("dedup-test")
+            # Externally modify the file (add a new task, keep IN_PROGRESS status)
+            temp_path.write_text("""# Refresh Test
 
-            # Should have 2 tasks (1 existing + 1 new), not 3
+## Git Worktree refresh-test
+
+- [🟡, """ + task_id + """] Initial task
+- [] New task added externally
+""")
+
+            # Refresh
+            manager.refresh_from_source()
+
+            # Verify changes reflected
+            worktree = manager.get_worktree("refresh-test")
             assert len(worktree.tasks) == 2
+            assert worktree.tasks[0].description == "Initial task"
+            assert worktree.tasks[0].status == TaskStatus.IN_PROGRESS  # Updated from source
+            assert worktree.tasks[1].description == "New task added externally"
 
-            descriptions = [task.description for task in worktree.tasks]
-            assert descriptions.count("Existing task") == 1
-            assert "New unique task" in descriptions
+        finally:
+            temp_path.unlink()
+
+    def test_refresh_updates_task_state_from_source(self):
+        """Test that refresh updates task state from source"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write("""# State Update Test
+
+## Git Worktree state-test
+
+- [] Task 1
+- [] Task 2
+""")
+            temp_path = Path(f.name)
+
+        try:
+            # Reset singleton
+            TaskManager._instance = None
+
+            source = MarkdownTaskSource(str(temp_path))
+            manager = TaskManager(source)
+
+            # Complete first task (writes to file)
+            task1_id = manager.get_worktree("state-test").tasks[0].task_id
+            manager.update_task_status("state-test", task1_id, TaskStatus.COMPLETED, "commit-abc")
+
+            # Externally modify file (change status to IN_PROGRESS, remove second task)
+            temp_path.write_text("""# State Update Test
+
+## Git Worktree state-test
+
+- [🟡, """ + task1_id + """, commit-xyz] Task 1
+""")
+
+            # Refresh
+            manager.refresh_from_source()
+
+            # Verify state updated from source
+            worktree = manager.get_worktree("state-test")
+            assert len(worktree.tasks) == 1
+            assert worktree.tasks[0].status == TaskStatus.IN_PROGRESS  # Updated from source
+            assert worktree.tasks[0].commit_sha == "commit-xyz"  # Updated from source
+
+        finally:
+            temp_path.unlink()
+
+    def test_refresh_handles_new_worktree(self):
+        """Test refresh when new worktree added to file"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write("""# New Worktree Test
+
+## Git Worktree wt1
+
+- [] Task 1
+""")
+            temp_path = Path(f.name)
+
+        try:
+            # Reset singleton
+            TaskManager._instance = None
+
+            source = MarkdownTaskSource(str(temp_path))
+            manager = TaskManager(source)
+
+            assert len(manager.list_worktrees()) == 1
+
+            # Add new worktree to file
+            temp_path.write_text("""# New Worktree Test
+
+## Git Worktree wt1
+
+- [] Task 1
+
+## Git Worktree wt2
+
+- [] Task 2
+""")
+
+            # Refresh
+            manager.refresh_from_source()
+
+            # Verify new worktree added
+            worktrees = manager.list_worktrees()
+            assert len(worktrees) == 2
+            wt_names = {wt.worktree_name for wt in worktrees}
+            assert "wt1" in wt_names
+            assert "wt2" in wt_names
+
+        finally:
+            temp_path.unlink()
+
+    def test_refresh_with_task_reordering(self):
+        """Test refresh when tasks are reordered in file"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write("""# Reorder Test
+
+## Git Worktree reorder-test
+
+- [] Task A
+- [] Task B
+- [] Task C
+""")
+            temp_path = Path(f.name)
+
+        try:
+            # Reset singleton
+            TaskManager._instance = None
+
+            source = MarkdownTaskSource(str(temp_path))
+            manager = TaskManager(source)
+
+            # Get initial task IDs
+            worktree = manager.get_worktree("reorder-test")
+            task_a_id = worktree.tasks[0].task_id
+            task_b_id = worktree.tasks[1].task_id
+            task_c_id = worktree.tasks[2].task_id
+
+            # Complete Task A
+            manager.update_task_status("reorder-test", task_a_id, TaskStatus.COMPLETED)
+
+            # Reorder tasks in file (move Task A to end)
+            temp_path.write_text(f"""# Reorder Test
+
+## Git Worktree reorder-test
+
+- [, {task_b_id}] Task B
+- [, {task_c_id}] Task C
+- [✅, {task_a_id}] Task A
+""")
+
+            # Refresh
+            manager.refresh_from_source()
+
+            # Verify new order and state from source
+            worktree = manager.get_worktree("reorder-test")
+            assert worktree.tasks[0].description == "Task B"
+            assert worktree.tasks[1].description == "Task C"
+            assert worktree.tasks[2].description == "Task A"
+            assert worktree.tasks[2].status == TaskStatus.COMPLETED  # Updated from source
 
         finally:
             temp_path.unlink()

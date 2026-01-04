@@ -1,4 +1,4 @@
-from .models import Task, Worktree, WorktreeInput, TaskStatus
+from .models import Task, TaskStatus, Worktree
 from .source import TaskSource
 from .utils import generate_short_id
 
@@ -8,7 +8,8 @@ class TaskManager:
     Singleton manager for task state and deduplication.
 
     Manages worktrees and tasks in memory, coordinating with TaskSource
-    for persistence.
+    for persistence. Supports refreshing from source to reconcile external
+    changes while preserving task execution state.
     """
 
     _instance = None
@@ -41,71 +42,55 @@ class TaskManager:
 
     def _load_from_source(self) -> None:
         """Load existing worktrees and tasks from the task source"""
-        worktrees = self._task_source.list_worktrees()
-        for worktree in worktrees:
-            self._worktrees[worktree.worktree_name] = worktree
+        source_worktrees = self._task_source.list_worktrees()
 
-            # Write task_ids back to source for tasks that were just loaded
-            # (in case they were generated during parsing)
+        # Use reconciliation logic with empty existing worktrees (initial load)
+        self._worktrees = self._reconcile_worktrees({}, source_worktrees)
+
+        # Write task_ids back to source for all tasks
+        # (in case they were generated during parsing)
+        for worktree in self._worktrees.values():
             for task in worktree.tasks:
                 self._task_source.update_task_id(
-                    worktree.worktree_name,
-                    task.sequence_number,
-                    task.task_id
+                    worktree.worktree_name, task.sequence_number, task.task_id
                 )
 
-    def add_tasks(self, raw_worktrees: list[WorktreeInput]) -> None:
+    def refresh_from_source(self) -> None:
         """
-        Add tasks from input data with deduplication.
+        Refresh worktrees and tasks from source, reconciling with in-memory state.
 
-        Args:
-            raw_worktrees: List of WorktreeInput with tasks to add
+        This method re-reads all worktrees and tasks from the TaskSource and
+        reconciles them with the current in-memory state using equivalence rules:
+
+        Equivalence Rules:
+        - Worktrees are equivalent if they have the same worktree_name
+        - Tasks are equivalent if they have the same description within the same worktree
+
+        State Reconciliation:
+        - For equivalent tasks: preserves task_id from in-memory
+        - For equivalent tasks: updates description, tags, sequence_number, status,
+          and commit_sha from source (source is primary)
+        - For equivalent worktrees: updates worktree_id, directory_path, and head_sha from source
+
+        Additions and Removals:
+        - New worktrees/tasks from source are added
+        - Worktrees/tasks no longer in source are removed
+
+        This allows external modifications to task definitions and status to be
+        synchronized with in-memory state, with the source as the authoritative source.
         """
-        for wt_input in raw_worktrees:
-            worktree_name = wt_input.worktree_name
+        source_worktrees = self._task_source.list_worktrees()
 
-            # Check if worktree already exists (deduplication by name)
-            if worktree_name in self._worktrees:
-                worktree = self._worktrees[worktree_name]
-            else:
-                # Create new worktree
-                worktree = Worktree(
-                    worktree_name=worktree_name,
-                    tasks=[]
-                )
-                self._worktrees[worktree_name] = worktree
+        # Reconcile with existing state
+        self._worktrees = self._reconcile_worktrees(self._worktrees, source_worktrees)
 
-            # Process tasks
-            for task_data in wt_input.tasks_to_start:
-                description = task_data.get('description', '')
-                tags = task_data.get('tags', [])
-
-                # Check if task already exists (deduplication by description)
-                existing_task = self._find_task_by_description(worktree, description)
-                if existing_task:
-                    # Task already exists, skip
-                    continue
-
-                # Create new task
-                task_id = generate_short_id(6)
-                sequence_number = len(worktree.tasks)
-
-                task = Task(
-                    task_id=task_id,
-                    description=description,
-                    status=TaskStatus.NOT_STARTED,
-                    sequence_number=sequence_number,
-                    tags=tags,
-                    commit_sha=None
-                )
-
-                worktree.tasks.append(task)
-
-                # Write task_id back to source
+        # Write task_ids back to source for newly added tasks
+        for worktree in self._worktrees.values():
+            for task in worktree.tasks:
+                # Only update if task_id was just generated (not reconciled)
+                # We write all IDs to be safe, the source should be idempotent
                 self._task_source.update_task_id(
-                    worktree_name,
-                    sequence_number,
-                    task_id
+                    worktree.worktree_name, task.sequence_number, task.task_id
                 )
 
     def update_task_status(
@@ -113,7 +98,7 @@ class TaskManager:
         worktree_name: str,
         task_id: str,
         status: TaskStatus,
-        commit_sha: str | None = None
+        commit_sha: str | None = None,
     ) -> None:
         """
         Update task status in memory and at source.
@@ -131,7 +116,9 @@ class TaskManager:
 
         task = self._find_task_by_id(worktree, task_id)
         if not task:
-            raise ValueError(f"Task '{task_id}' not found in worktree '{worktree_name}'")
+            raise ValueError(
+                f"Task '{task_id}' not found in worktree '{worktree_name}'"
+            )
 
         # Update internal state
         task.status = status
@@ -141,12 +128,7 @@ class TaskManager:
         # Update source
         self._task_source.update_task_status(worktree_name, task_id, status, commit_sha)
 
-    def mark_task_error(
-        self,
-        worktree_name: str,
-        task_id: str,
-        error_msg: str
-    ) -> None:
+    def mark_task_error(self, worktree_name: str, task_id: str, error_msg: str) -> None:
         """
         Mark a task as failed with an error message.
 
@@ -209,7 +191,100 @@ class TaskManager:
         """
         return list(self._worktrees.values())
 
-    def _find_task_by_description(self, worktree: Worktree, description: str) -> Task | None:
+    def _reconcile_tasks(
+        self, existing_tasks: list[Task], source_tasks: list[Task]
+    ) -> list[Task]:
+        """
+        Reconcile tasks from source with existing in-memory tasks.
+
+        Args:
+            existing_tasks: Current in-memory task list
+            source_tasks: Fresh tasks from source
+
+        Returns:
+            Reconciled task list preserving source order and taking fields from source
+
+        Reconciliation rules:
+        - Tasks are matched by description (equivalence)
+        - For matched tasks: preserve task_id from existing
+        - For matched tasks: update description, tags, sequence_number, status, commit_sha from source
+        - For new tasks: add as-is from source
+        - Removed tasks: not included in result
+        """
+        # Create mapping of description -> existing Task for fast lookup
+        existing_by_desc = {task.description: task for task in existing_tasks}
+
+        reconciled = []
+        for source_task in source_tasks:
+            if source_task.description in existing_by_desc:
+                # Task exists - preserve task_id, update everything else from source
+                existing = existing_by_desc[source_task.description]
+
+                # Create reconciled task with task_id from existing, everything else from source
+                reconciled_task = Task(
+                    task_id=existing.task_id,  # Preserve ID
+                    description=source_task.description,  # Update from source
+                    status=source_task.status,  # Update from source
+                    sequence_number=source_task.sequence_number,  # Update from source
+                    tags=source_task.tags,  # Update from source
+                    commit_sha=source_task.commit_sha,  # Update from source
+                )
+                reconciled.append(reconciled_task)
+            else:
+                # New task - add as-is
+                reconciled.append(source_task)
+
+        return reconciled
+
+    def _reconcile_worktrees(
+        self, existing_worktrees: dict[str, Worktree], source_worktrees: list[Worktree]
+    ) -> dict[str, Worktree]:
+        """
+        Reconcile worktrees from source with existing in-memory worktrees.
+
+        Args:
+            existing_worktrees: Current in-memory worktrees dict
+            source_worktrees: Fresh worktrees from source
+
+        Returns:
+            Reconciled worktrees dict
+
+        Reconciliation rules:
+        - Worktrees are matched by worktree_name (equivalence)
+        - For matched worktrees: reconcile tasks, update metadata from source
+        - For new worktrees: add as-is
+        - Removed worktrees: not included in result
+        """
+        reconciled = {}
+
+        for source_wt in source_worktrees:
+            if source_wt.worktree_name in existing_worktrees:
+                # Worktree exists - reconcile tasks and update metadata
+                existing_wt = existing_worktrees[source_wt.worktree_name]
+
+                # Reconcile tasks
+                reconciled_tasks = self._reconcile_tasks(
+                    existing_wt.tasks, source_wt.tasks
+                )
+
+                # Create reconciled worktree with updated metadata from source
+                reconciled_wt = Worktree(
+                    worktree_name=source_wt.worktree_name,
+                    worktree_id=source_wt.worktree_id,  # Update from source
+                    tasks=reconciled_tasks,
+                    directory_path=source_wt.directory_path,  # Update from source
+                    head_sha=source_wt.head_sha,  # Update from source
+                )
+                reconciled[source_wt.worktree_name] = reconciled_wt
+            else:
+                # New worktree - add as-is
+                reconciled[source_wt.worktree_name] = source_wt
+
+        return reconciled
+
+    def _find_task_by_description(
+        self, worktree: Worktree, description: str
+    ) -> Task | None:
         """Find a task in a worktree by exact description match"""
         for task in worktree.tasks:
             if task.description == description:

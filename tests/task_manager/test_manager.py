@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
 from task_manager.manager import TaskManager
-from task_manager.models import Task, Worktree, WorktreeInput, TaskStatus
+from task_manager.models import Task, Worktree, TaskStatus
 from task_manager.markdown_source import MarkdownTaskSource
 
 
@@ -86,120 +86,6 @@ class TestTaskManagerSingleton:
         # Should only call list_worktrees on first initialization
         assert mock1.list_worktrees.called
         assert not mock2.list_worktrees.called
-
-
-class TestTaskManagerAddTasks:
-    """Tests for add_tasks method"""
-
-    def test_add_tasks_creates_new_worktree(self, task_manager_with_mock):
-        """Test adding tasks creates a new worktree"""
-        input_data = [
-            WorktreeInput(
-                worktree_name="new-wt",
-                tasks_to_start=[
-                    {"description": "Task 1", "tags": ["tag1"]},
-                    {"description": "Task 2", "tags": []},
-                ]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data)
-
-        worktree = task_manager_with_mock.get_worktree("new-wt")
-        assert worktree is not None
-        assert worktree.worktree_name == "new-wt"
-        assert len(worktree.tasks) == 2
-
-    def test_add_tasks_deduplicates_by_worktree_name(self, task_manager_with_mock):
-        """Test that duplicate worktree names are detected"""
-        input_data1 = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[{"description": "Task 1"}]
-            )
-        ]
-        input_data2 = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[{"description": "Task 2"}]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data1)
-        task_manager_with_mock.add_tasks(input_data2)
-
-        worktrees = task_manager_with_mock.list_worktrees()
-        assert len(worktrees) == 1
-        assert len(worktrees[0].tasks) == 2
-
-    def test_add_tasks_deduplicates_by_description(self, task_manager_with_mock):
-        """Test that duplicate task descriptions are skipped"""
-        input_data = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[
-                    {"description": "Same task"},
-                    {"description": "Same task"},
-                    {"description": "Different task"},
-                ]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data)
-
-        worktree = task_manager_with_mock.get_worktree("test-wt")
-        assert len(worktree.tasks) == 2
-        assert worktree.tasks[0].description == "Same task"
-        assert worktree.tasks[1].description == "Different task"
-
-    def test_add_tasks_generates_task_ids(self, task_manager_with_mock, mock_task_source):
-        """Test that task IDs are generated for new tasks"""
-        input_data = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[{"description": "Task 1"}]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data)
-
-        worktree = task_manager_with_mock.get_worktree("test-wt")
-        task = worktree.tasks[0]
-
-        assert len(task.task_id) == 6
-        assert task.task_id.islower()
-
-    def test_add_tasks_assigns_sequence_numbers(self, task_manager_with_mock):
-        """Test that sequence numbers are assigned correctly"""
-        input_data = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[
-                    {"description": "Task 1"},
-                    {"description": "Task 2"},
-                    {"description": "Task 3"},
-                ]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data)
-
-        worktree = task_manager_with_mock.get_worktree("test-wt")
-        for i, task in enumerate(worktree.tasks):
-            assert task.sequence_number == i
-
-    def test_add_tasks_calls_update_task_id(self, task_manager_with_mock, mock_task_source):
-        """Test that update_task_id is called for new tasks"""
-        input_data = [
-            WorktreeInput(
-                worktree_name="test-wt",
-                tasks_to_start=[{"description": "Task 1"}]
-            )
-        ]
-
-        task_manager_with_mock.add_tasks(input_data)
-
-        assert mock_task_source.update_task_id.called
 
 
 class TestTaskManagerUpdateStatus:
