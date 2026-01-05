@@ -1,8 +1,30 @@
-# Agentic Flow Configurable parameters
+# Agentic Flow Configuration File
+#
+# This file defines system-wide defaults for Agentic Flow.
+# Configuration precedence: CLI arguments > AGF config file > hardcoded defaults
+#
+# Common customizations:
+# - Change default agent: agent: opencode
+# - Change default model type: model-type: thinking
+# - Adjust concurrent tasks: concurrent-tasks: 10
+# - Add custom agents with model mappings in the agents section
+
+# Directory for storing git worktrees (default: .worktrees)
 worktrees: .worktrees
+
+# Maximum number of concurrent tasks to run (default: 5)
 concurrent-tasks: 5
+
+# Default agent to use for task processing (default: claude-code)
+# Can be overridden with --agent CLI option
 agent: claude-code
+
+# Default model type: thinking, standard, or light (default: standard)
+# Can be overridden with --model CLI option
 model-type: standard
+
+# Agent-specific model mappings
+# Maps abstract model types (thinking, standard, light) to concrete model names
 agents:
   claude-code:
     thinking: opus
@@ -12,3 +34,8 @@ agents:
     thinking: github-copilot/claude-opus-4.5
     standard: github-copilot/claude-sonnet-4.5
     light: github-copilot/claude-haiku-4.5
+  # Example: Add custom agent with model mappings
+  # custom-agent:
+  #   thinking: custom-thinking-model
+  #   standard: custom-standard-model
+  #   light: custom-light-model

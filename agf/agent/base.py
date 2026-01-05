@@ -116,6 +116,36 @@ class ModelMapping:
         """List all model mappings for an agent."""
         return cls._mappings.get(agent_name)
 
+    @classmethod
+    def from_agf_config(cls, config: "AGFConfig") -> None:
+        """Register agents from AGFConfig.
+
+        Updates the global ModelMapping registry with agent configurations
+        from the provided AGFConfig. This allows dynamic agent registration
+        from configuration files.
+
+        Args:
+            config: AGFConfig instance containing agent model mappings
+
+        Example:
+            >>> from agf.config import AGFConfig
+            >>> config = AGFConfig.default()
+            >>> ModelMapping.from_agf_config(config)
+            >>> ModelMapping.list_agents()
+            ['claude-code', 'opencode']
+        """
+        from agf.config.models import AGFConfig
+
+        for agent_name, agent_config in config.agents.items():
+            cls.register_agent(
+                agent_name,
+                {
+                    "thinking": agent_config.thinking,
+                    "standard": agent_config.standard,
+                    "light": agent_config.light,
+                },
+            )
+
 
 class AgentResult(BaseModel):
     """Result from an agent run."""

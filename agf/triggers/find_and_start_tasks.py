@@ -13,8 +13,16 @@ from typing import Any
 import click
 import schedule
 
-from agf.agent.base import AgentConfig, AgentType, ModelType
+from agf.agent.base import AgentConfig, AgentType, ModelMapping, ModelType
 from agf.agent.runner import AgentRunner
+from agf.config import (
+    AGFConfig,
+    CLIConfig,
+    EffectiveConfig,
+    find_agf_config,
+    load_agf_config_from_file,
+    merge_configs,
+)
 
 
 def extract_json_from_markdown(text: str) -> str | None:
@@ -288,6 +296,12 @@ def setup_signal_handlers(context: TriggerContext) -> None:
     help="Root directory of the project for which workflows are started",
 )
 @click.option(
+    "--agf-config",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Path to AGF config file (default: auto-discover .agf.yaml or agf.yaml)",
+)
+@click.option(
     "--sync-interval",
     default=30,
     type=int,
@@ -308,23 +322,24 @@ def setup_signal_handlers(context: TriggerContext) -> None:
 @click.option(
     "--agent",
     type=click.Choice(AgentType.values(), case_sensitive=False),
-    default=AgentType.default(),
-    help="Agent to use for task processing (default: claude-code)",
+    default=None,
+    help="Agent to use for task processing (overrides AGF config)",
 )
 @click.option(
     "--model",
     type=click.Choice(ModelType.values(), case_sensitive=False),
-    default=ModelType.default(),
-    help="Model type to use (default: standard)",
+    default=None,
+    help="Model type to use (overrides AGF config)",
 )
 def main(
     tasks_file: Path,
     project_dir: Path,
+    agf_config: Path | None,
     sync_interval: int,
     dry_run: bool,
     single_run: bool,
-    agent: str,
-    model: str,
+    agent: str | None,
+    model: str | None,
 ) -> None:
     """Find and start eligible tasks from a task list.
 
@@ -332,27 +347,67 @@ def main(
     ready to be picked up by agents. It calls the /agf:process_tasks prompt
     to analyze the task list and returns eligible tasks.
 
+    Configuration precedence: CLI arguments > AGF config file > defaults
+
     Example usage:
 
         uv run triggers/find_and_start_tasks.py --tasks-file ./tasks.md --project-dir .
 
         uv run triggers/find_and_start_tasks.py --tasks-file ./tasks.md --project-dir . --dry-run --single-run
+
+        uv run triggers/find_and_start_tasks.py --tasks-file ./tasks.md --project-dir . --agent opencode
     """
+    # Load AGF configuration
+    agf_config_path = agf_config
+    if agf_config_path is None:
+        # Auto-discover config file
+        agf_config_path = find_agf_config(project_dir)
+
+    if agf_config_path is not None:
+        try:
+            system_config = load_agf_config_from_file(agf_config_path)
+            log(f"Loaded AGF config from: {agf_config_path}")
+        except Exception as e:
+            log(f"Warning: Failed to load AGF config from {agf_config_path}: {e}")
+            log("Using default configuration")
+            system_config = AGFConfig.default()
+    else:
+        log("No AGF config file found, using defaults")
+        system_config = AGFConfig.default()
+
+    # Register agents from config
+    ModelMapping.from_agf_config(system_config)
+
+    # Create CLI config
+    cli_config = CLIConfig(
+        tasks_file=tasks_file,
+        project_dir=project_dir,
+        agf_config=agf_config,
+        sync_interval=sync_interval,
+        dry_run=dry_run,
+        single_run=single_run,
+        agent=agent,
+        model_type=model,
+    )
+
+    # Merge configurations with precedence: CLI > AGF > defaults
+    effective_config = merge_configs(system_config, cli_config)
+
     log(f"Starting task trigger")
     log(f"Tasks file: {tasks_file}")
     log(f"Project dir: {project_dir}")
     log(f"Sync interval: {sync_interval}s")
     log(f"Dry run: {dry_run}")
     log(f"Single run: {single_run}")
-    log(f"Agent: {agent}")
-    log(f"Model: {model}")
+    log(f"Agent: {effective_config.agent}")
+    log(f"Model: {effective_config.model_type}")
 
     context = TriggerContext()
 
     if single_run:
         context.current_iteration = 1
         run_iteration(
-            tasks_file, project_dir, agent, model, dry_run, context.current_iteration
+            tasks_file, project_dir, effective_config.agent, effective_config.model_type, dry_run, context.current_iteration
         )
         log("Single run completed, exiting")
         return
@@ -364,13 +419,13 @@ def main(
         """Job function for the scheduler."""
         context.current_iteration += 1
         run_iteration(
-            tasks_file, project_dir, agent, model, dry_run, context.current_iteration
+            tasks_file, project_dir, effective_config.agent, effective_config.model_type, dry_run, context.current_iteration
         )
 
     # Run first iteration immediately
     context.current_iteration = 1
     run_iteration(
-        tasks_file, project_dir, agent, model, dry_run, context.current_iteration
+        tasks_file, project_dir, effective_config.agent, effective_config.model_type, dry_run, context.current_iteration
     )
 
     # Schedule subsequent iterations

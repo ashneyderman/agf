@@ -1,0 +1,18 @@
+# Custom configuration with non-default values
+worktrees: .custom-worktrees
+concurrent-tasks: 10
+agent: opencode
+model-type: thinking
+agents:
+  claude-code:
+    thinking: opus
+    standard: sonnet
+    light: haiku
+  opencode:
+    thinking: github-copilot/claude-opus-4.5
+    standard: github-copilot/claude-sonnet-4.5
+    light: github-copilot/claude-haiku-4.5
+  custom-agent:
+    thinking: custom-thinking-model
+    standard: custom-standard-model
+    light: custom-light-model

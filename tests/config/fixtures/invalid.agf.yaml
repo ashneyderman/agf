@@ -1,0 +1,5 @@
+# Invalid YAML - malformed structure
+concurrent-tasks: -5  # Invalid: must be positive
+agents:
+  invalid-agent
+    missing: colon
