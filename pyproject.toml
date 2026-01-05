@@ -5,6 +5,7 @@ description = "Agentic Flow - orchestration layer for AI coding agents"
 requires-python = ">=3.12"
 dependencies = [
     "click>=8.3.1",
+    "gitpython>=3.1.46",
     "pydantic>=2.0.0",
     "schedule>=1.2.0",
 ]
