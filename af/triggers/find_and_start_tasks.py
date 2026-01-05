@@ -13,8 +13,8 @@ from typing import Any
 import click
 import schedule
 
-from agent.base import AgentConfig, AgentType, ModelType
-from agent.runner import AgentRunner
+from af.agent.base import AgentConfig, AgentType, ModelType
+from af.agent.runner import AgentRunner
 
 
 def extract_json_from_markdown(text: str) -> str | None:

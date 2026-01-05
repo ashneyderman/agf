@@ -2,9 +2,9 @@ import pytest
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
-from task_manager.manager import TaskManager
-from task_manager.models import Task, Worktree, TaskStatus
-from task_manager.markdown_source import MarkdownTaskSource
+from af.task_manager.manager import TaskManager
+from af.task_manager.models import Task, Worktree, TaskStatus
+from af.task_manager.markdown_source import MarkdownTaskSource
 
 
 @pytest.fixture

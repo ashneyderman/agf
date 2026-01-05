@@ -1,7 +1,7 @@
 import pytest
 import tempfile
 from pathlib import Path
-from task_manager import TaskManager, MarkdownTaskSource, TaskStatus
+from af.task_manager import TaskManager, MarkdownTaskSource, TaskStatus
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import pytest
 
-from agent.base import AgentConfig, AgentResult, ModelMapping
+from af.agent.base import AgentConfig, AgentResult, ModelMapping
 
 
 class TestAgentResult:

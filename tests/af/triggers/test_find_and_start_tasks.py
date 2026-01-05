@@ -8,8 +8,8 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from agent.base import AgentResult
-from triggers.find_and_start_tasks import (
+from af.agent.base import AgentResult
+from af.triggers.find_and_start_tasks import (
     TriggerContext,
     build_process_tasks_prompt,
     extract_json_from_markdown,
@@ -445,7 +445,7 @@ class TestInvokeProcessTasks:
 
         assert result == []
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_successful_invocation_with_list(self, mock_runner, tmp_path):
         """Test successful agent invocation returning list directly."""
         tasks_file = tmp_path / "tasks.md"
@@ -467,7 +467,7 @@ class TestInvokeProcessTasks:
         assert result == []
         mock_runner.run.assert_called_once()
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_successful_invocation_with_claude_code_structure(self, mock_runner, tmp_path):
         """Test successful invocation with Claude Code nested result structure."""
         tasks_file = tmp_path / "tasks.md"
@@ -499,7 +499,7 @@ class TestInvokeProcessTasks:
         assert result[0]["worktree_name"] == "test"
         assert result[0]["tasks_to_start"][0]["description"] == "Task 1"
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_failed_invocation(self, mock_runner, tmp_path):
         """Test failed agent invocation."""
         tasks_file = tmp_path / "tasks.md"
@@ -520,7 +520,7 @@ class TestInvokeProcessTasks:
 
         assert result is None
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_exception(self, mock_runner, tmp_path):
         """Test handling of exception during invocation."""
         tasks_file = tmp_path / "tasks.md"
@@ -532,7 +532,7 @@ class TestInvokeProcessTasks:
 
         assert result is None
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_unparseable_response(self, mock_runner, tmp_path):
         """Test handling when agent response cannot be parsed."""
         tasks_file = tmp_path / "tasks.md"
@@ -558,7 +558,7 @@ class TestInvokeProcessTasks:
 
         assert result is None
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_custom_agent(self, mock_runner, tmp_path):
         """Test invocation with a custom agent name."""
         tasks_file = tmp_path / "tasks.md"
@@ -580,7 +580,7 @@ class TestInvokeProcessTasks:
         assert result == []
         mock_runner.run.assert_called_once_with("opencode", f"/af:process_tasks {tasks_file}", mock_runner.run.call_args[0][2])
 
-    @patch("triggers.find_and_start_tasks.AgentRunner")
+    @patch("af.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_custom_model(self, mock_runner, tmp_path):
         """Test invocation with a custom model type."""
         tasks_file = tmp_path / "tasks.md"

@@ -10,7 +10,7 @@ import tempfile
 import pytest
 from git import Repo
 
-from git_repo import mk_worktree, rm_worktree, _get_worktree_branch
+from af.git_repo import mk_worktree, rm_worktree, _get_worktree_branch
 
 
 @pytest.fixture
