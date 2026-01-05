@@ -3,12 +3,12 @@
 ## Read and Execute
 
 - IF: claude code is the agent
-  ./claude/commands/af/prime.md
-  ./claude/commands/af/start.md
+  ./claude/commands/agf/prime.md
+  ./claude/commands/agf/start.md
 
 - IF: opencode is the agent
-  ./opnecode/commands/af/prime.md
-  ./opnecode/commands/af/start.md
+  ./opnecode/commands/agf/prime.md
+  ./opnecode/commands/agf/start.md
 
 ## Report
 

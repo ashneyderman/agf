@@ -8,8 +8,8 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from af.agent.base import AgentResult
-from af.triggers.find_and_start_tasks import (
+from agf.agent.base import AgentResult
+from agf.triggers.find_and_start_tasks import (
     TriggerContext,
     build_process_tasks_prompt,
     extract_json_from_markdown,
@@ -63,7 +63,7 @@ class TestExtractJsonFromMarkdown:
 
     def test_multiline_json(self):
         """Test extraction of multiline JSON."""
-        text = '''Here are the results:
+        text = """Here are the results:
 
 ```json
 [
@@ -74,28 +74,28 @@ class TestExtractJsonFromMarkdown:
 ]
 ```
 
-All done.'''
+All done."""
         result = extract_json_from_markdown(text)
         assert '"worktree_name": "test"' in result
         assert '"tasks_to_start": []' in result
 
     def test_no_code_block(self):
         """Test handling of text with no code block."""
-        text = 'Just plain text without any code blocks.'
+        text = "Just plain text without any code blocks."
         result = extract_json_from_markdown(text)
         assert result is None
 
     def test_empty_code_block(self):
         """Test handling of empty code block."""
-        text = '```json\n```'
+        text = "```json\n```"
         result = extract_json_from_markdown(text)
-        assert result == ''
+        assert result == ""
 
     def test_whitespace_handling(self):
         """Test that whitespace is stripped from extracted content."""
-        text = '```json\n  \n  []\n  \n```'
+        text = "```json\n  \n  []\n  \n```"
         result = extract_json_from_markdown(text)
-        assert result == '[]'
+        assert result == "[]"
 
 
 class TestExtractTasksFromAgentResult:
@@ -140,17 +140,17 @@ class TestExtractTasksFromAgentResult:
 
     def test_opencode_event_list_multiple_worktrees(self):
         """Test extraction from OpenCode with multiple worktrees."""
-        json_content = '''[
+        json_content = """[
             {"worktree_name": "validation-workflow", "tasks_to_start": [{"description": "Task A", "tags": []}]},
             {"worktree_name": "classify-primary-topic", "tasks_to_start": [{"description": "Task B", "tags": ["sonnet"]}]}
-        ]'''
+        ]"""
         parsed_output = [
             {"type": "step_start", "part": {}},
             {
                 "type": "text",
                 "part": {
                     "type": "text",
-                    "text": f'Analyzing tasks...\n\n```json\n{json_content}\n```',
+                    "text": f"Analyzing tasks...\n\n```json\n{json_content}\n```",
                 },
             },
         ]
@@ -210,20 +210,20 @@ class TestExtractTasksFromAgentResult:
         """Test extraction when Claude Code returns empty array."""
         parsed_output = {
             "type": "result",
-            "result": 'No eligible tasks.\n\n```json\n[]\n```',
+            "result": "No eligible tasks.\n\n```json\n[]\n```",
         }
         result = extract_tasks_from_agent_result(parsed_output)
         assert result == []
 
     def test_claude_code_multiple_worktrees(self):
         """Test extraction with multiple worktrees."""
-        json_content = '''[
+        json_content = """[
             {"worktree_name": "feature-1", "tasks_to_start": [{"description": "Task A", "tags": ["api"]}]},
             {"worktree_name": "feature-2", "tasks_to_start": [{"description": "Task B", "tags": []}]}
-        ]'''
+        ]"""
         parsed_output = {
             "type": "result",
-            "result": f'Here are the tasks:\n\n```json\n{json_content}\n```',
+            "result": f"Here are the tasks:\n\n```json\n{json_content}\n```",
         }
         result = extract_tasks_from_agent_result(parsed_output)
         assert result is not None
@@ -340,7 +340,7 @@ class TestBuildProcessTasksPrompt:
 
         result = build_process_tasks_prompt(tasks_file)
 
-        assert result == f"/af:process_tasks {tasks_file}"
+        assert result == f"/agf:process_tasks {tasks_file}"
 
 
 class TestParseAndPrintResults:
@@ -441,11 +441,13 @@ class TestInvokeProcessTasks:
         tasks_file = tmp_path / "tasks.md"
         tasks_file.write_text("# Tasks\n")
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=True)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=True
+        )
 
         assert result == []
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_successful_invocation_with_list(self, mock_runner, tmp_path):
         """Test successful agent invocation returning list directly."""
         tasks_file = tmp_path / "tasks.md"
@@ -462,13 +464,17 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False
+        )
 
         assert result == []
         mock_runner.run.assert_called_once()
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
-    def test_successful_invocation_with_claude_code_structure(self, mock_runner, tmp_path):
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
+    def test_successful_invocation_with_claude_code_structure(
+        self, mock_runner, tmp_path
+    ):
         """Test successful invocation with Claude Code nested result structure."""
         tasks_file = tmp_path / "tasks.md"
         tasks_file.write_text("# Tasks\n")
@@ -492,14 +498,16 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False
+        )
 
         assert result is not None
         assert len(result) == 1
         assert result[0]["worktree_name"] == "test"
         assert result[0]["tasks_to_start"][0]["description"] == "Task 1"
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_failed_invocation(self, mock_runner, tmp_path):
         """Test failed agent invocation."""
         tasks_file = tmp_path / "tasks.md"
@@ -516,11 +524,13 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False
+        )
 
         assert result is None
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_exception(self, mock_runner, tmp_path):
         """Test handling of exception during invocation."""
         tasks_file = tmp_path / "tasks.md"
@@ -528,11 +538,13 @@ class TestInvokeProcessTasks:
 
         mock_runner.run.side_effect = Exception("Connection error")
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False
+        )
 
         assert result is None
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_unparseable_response(self, mock_runner, tmp_path):
         """Test handling when agent response cannot be parsed."""
         tasks_file = tmp_path / "tasks.md"
@@ -554,11 +566,13 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="standard", dry_run=False
+        )
 
         assert result is None
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_custom_agent(self, mock_runner, tmp_path):
         """Test invocation with a custom agent name."""
         tasks_file = tmp_path / "tasks.md"
@@ -575,12 +589,18 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="opencode", model="standard", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="opencode", model="standard", dry_run=False
+        )
 
         assert result == []
-        mock_runner.run.assert_called_once_with("opencode", f"/af:process_tasks {tasks_file}", mock_runner.run.call_args[0][2])
+        mock_runner.run.assert_called_once_with(
+            "opencode",
+            f"/agf:process_tasks {tasks_file}",
+            mock_runner.run.call_args[0][2],
+        )
 
-    @patch("af.triggers.find_and_start_tasks.AgentRunner")
+    @patch("agf.triggers.find_and_start_tasks.AgentRunner")
     def test_invocation_with_custom_model(self, mock_runner, tmp_path):
         """Test invocation with a custom model type."""
         tasks_file = tmp_path / "tasks.md"
@@ -597,7 +617,9 @@ class TestInvokeProcessTasks:
         )
         mock_runner.run.return_value = mock_result
 
-        result = invoke_process_tasks(tasks_file, tmp_path, agent="claude-code", model="thinking", dry_run=False)
+        result = invoke_process_tasks(
+            tasks_file, tmp_path, agent="claude-code", model="thinking", dry_run=False
+        )
 
         assert result == []
         # Verify the config was passed with the correct model

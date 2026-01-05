@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `af-007`
+agf_id: `agf-007`
 prompt: `prompts/af-improve-next-task-selection.md`
 
 ## Chore Description

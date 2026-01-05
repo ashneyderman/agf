@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `af-008`
+agf_id: `agf-008`
 prompt: `prompts/af-tasks-management-refresh.md`
 
 ## Feature Description

@@ -2,20 +2,21 @@
 
 ## Metadata
 
-af_id: `af-cron-trigger`
+agf_id: `agf-cron-trigger`
 prompt: `@prompts/af-cron-trigger.md`
 task_type: feature
 complexity: medium
 
 ## Task Description
 
-Create a task triggering mechanism that spins up workflows by periodically scanning a tasks file and identifying tasks ready to run. The script will be placed in a `triggers` package and will use the existing agent infrastructure to call the `/af:process_tasks` prompt. It will support both single-run and continuous scheduling modes.
+Create a task triggering mechanism that spins up workflows by periodically scanning a tasks file and identifying tasks ready to run. The script will be placed in a `triggers` package and will use the existing agent infrastructure to call the `/agf:process_tasks` prompt. It will support both single-run and continuous scheduling modes.
 
 ## Objective
 
 Deliver a fully functional `find_and_start_tasks.py` script that:
+
 1. Accepts CLI arguments for tasks-file, project-dir, sync-interval, dry-run, and single-run
-2. Calls the `/af:process_tasks` prompt to identify eligible tasks
+2. Calls the `/agf:process_tasks` prompt to identify eligible tasks
 3. Parses and prints the list of ready-to-run tasks
 4. Supports continuous scheduling with configurable intervals
 
@@ -26,9 +27,10 @@ The agentic flow system needs an automated way to discover and initiate tasks fr
 ## Solution Approach
 
 Create a Python script using:
+
 - `click` package (already available) for CLI argument parsing
 - `schedule` package (needs to be added) for cron-like scheduling
-- Existing `AgentRunner` infrastructure to execute the `/af:process_tasks` prompt
+- Existing `AgentRunner` infrastructure to execute the `/agf:process_tasks` prompt
 - Signal handling for graceful termination in continuous mode
 
 ## Relevant Files
@@ -36,7 +38,7 @@ Create a Python script using:
 - `agent/runner.py` - Contains `AgentRunner` class for executing agents
 - `agent/claude_code.py` - `ClaudeCodeAgent` implementation for calling claude CLI
 - `agent/base.py` - `AgentConfig` and `AgentResult` classes
-- `.claude/commands/af/process_tasks.md` - The prompt that analyzes tasks and returns eligible ones
+- `.claude/commands/agf/process_tasks.md` - The prompt that analyzes tasks and returns eligible ones
 - `pyproject.toml` - Project dependencies (needs `schedule` added)
 
 ### New Files
@@ -52,7 +54,7 @@ Set up the triggers package structure and add the `schedule` dependency to pypro
 
 ### Phase 2: Core Implementation
 
-Implement the CLI using click with all required arguments and validation. Build the trigger loop logic that calls `/af:process_tasks` and parses results.
+Implement the CLI using click with all required arguments and validation. Build the trigger loop logic that calls `/agf:process_tasks` and parses results.
 
 ### Phase 3: Integration & Polish
 
@@ -82,7 +84,7 @@ Implement continuous scheduling mode with proper signal handling for graceful sh
 
 ### 4. Implement process_tasks invocation
 
-- Create function to build the prompt for `/af:process_tasks`
+- Create function to build the prompt for `/agf:process_tasks`
 - Use `AgentRunner` with `ClaudeCodeAgent` to execute the prompt
 - Configure `AgentConfig` with appropriate settings (working_dir, output_format)
 
@@ -130,7 +132,7 @@ Implement continuous scheduling mode with proper signal handling for graceful sh
 
 - [ ] Script is executable via `uv run triggers/find_and_start_tasks.py`
 - [ ] All CLI arguments work as specified (--tasks-file, --project-dir, --sync-interval, --dry-run, --single-run)
-- [ ] Script correctly calls `/af:process_tasks` prompt with the tasks file
+- [ ] Script correctly calls `/agf:process_tasks` prompt with the tasks file
 - [ ] Script parses and prints eligible tasks from the response
 - [ ] Single-run mode executes once and exits
 - [ ] Continuous mode runs at specified intervals after each iteration completes
@@ -148,6 +150,6 @@ Execute these commands to validate the task is complete:
 ## Notes
 
 - The `schedule` package needs to be added via `uv add schedule`
-- The script calls the prompt as `/af:process_tasks <tasks-file>` where the prompt is expected to be available through the claude CLI's skill system
+- The script calls the prompt as `/agf:process_tasks <tasks-file>` where the prompt is expected to be available through the claude CLI's skill system
 - The sync-interval stagger ensures iterations do NOT overlap - the next iteration starts only after the previous one completes plus the interval
 - Consider adding logging with timestamps for operational visibility in continuous mode

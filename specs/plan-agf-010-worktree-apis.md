@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `af-010`
+agf_id: `agf-010`
 prompt: `prompts/af-worktree-apis.md`
 task_type: feature
 complexity: medium

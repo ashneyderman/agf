@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from af.task_manager.models import Task, Worktree, TaskStatus
+from agf.task_manager.models import Task, Worktree, TaskStatus
 
 
 def test_task_creation_with_all_fields():

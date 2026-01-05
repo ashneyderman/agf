@@ -13,8 +13,8 @@ from typing import Any
 import click
 import schedule
 
-from af.agent.base import AgentConfig, AgentType, ModelType
-from af.agent.runner import AgentRunner
+from agf.agent.base import AgentConfig, AgentType, ModelType
+from agf.agent.runner import AgentRunner
 
 
 def extract_json_from_markdown(text: str) -> str | None:
@@ -155,8 +155,8 @@ def validate_project_dir(
 
 
 def build_process_tasks_prompt(tasks_file: Path) -> str:
-    """Build the prompt to invoke /af:process_tasks."""
-    return f"/af:process_tasks {tasks_file}"
+    """Build the prompt to invoke /agf:process_tasks."""
+    return f"/agf:process_tasks {tasks_file}"
 
 
 def invoke_process_tasks(
@@ -166,7 +166,7 @@ def invoke_process_tasks(
     model: str,
     dry_run: bool = False,
 ) -> list[Any] | None:
-    """Invoke the /af:process_tasks prompt and return parsed results."""
+    """Invoke the /agf:process_tasks prompt and return parsed results."""
     prompt = build_process_tasks_prompt(tasks_file)
 
     if dry_run:
@@ -329,7 +329,7 @@ def main(
     """Find and start eligible tasks from a task list.
 
     This script periodically scans a tasks file and identifies tasks that are
-    ready to be picked up by agents. It calls the /af:process_tasks prompt
+    ready to be picked up by agents. It calls the /agf:process_tasks prompt
     to analyze the task list and returns eligible tasks.
 
     Example usage:

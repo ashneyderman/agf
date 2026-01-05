@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from af.task_manager.markdown_source import MarkdownTaskSource
-from af.task_manager.models import TaskStatus
+from agf.task_manager.markdown_source import MarkdownTaskSource
+from agf.task_manager.models import TaskStatus
 
 
 @pytest.fixture

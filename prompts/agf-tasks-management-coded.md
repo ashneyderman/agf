@@ -45,7 +45,7 @@ Create a task manager that will be a single global instance that will manage tas
 
 The first implementation of TaskSource will be a MarkdownTaskSource. Which will read .md file for the source of tasks. This task source will receive the location of the .md file as an argument at initialization.
 
-Each worktree starts with `##` <name> {<af_id>}. The list of tasks is a unordered list. Each task has the following format: <task_state> <description> {tag1, tag2, ...}. <task_state> is a field that is wrapped in `[]` and contains comma separated values for <status>, <task_id>, <git sha>. <description> is a field that contains the task description, that could be multi-line description. The last section wrapped within `{}` is a list of optional tags.
+Each worktree starts with `##` <name> {<agf_id>}. The list of tasks is a unordered list. Each task has the following format: <task_state> <description> {tag1, tag2, ...}. <task_state> is a field that is wrapped in `[]` and contains comma separated values for <status>, <task_id>, <git sha>. <description> is a field that contains the task description, that could be multi-line description. The last section wrapped within `{}` is a list of optional tags.
 
 ## Task Status Guide
 

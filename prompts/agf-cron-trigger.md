@@ -25,7 +25,7 @@ use schedule package to create cron like runs when running in non single-run mod
 
 The script's main function is responsible for parsing command line arguments and initializing the trigger loop.
 A single iteration of the loop has to determine a list of tasks that are ready to run. It does that by calling
-`/af:process_tasks <tasks-file>` prompt.
+`/agf:process_tasks <tasks-file>` prompt.
 
 The result of the prompt's execution should be a list of tasks that are ready to run.
 

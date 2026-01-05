@@ -1,0 +1,14 @@
+# Agentic Flow Configurable parameters
+worktrees: .worktrees
+concurrent-tasks: 5
+agent: claude-code
+model-type: standard
+agents:
+  claude-code:
+    thinking: opus
+    standard: sonnet
+    light: haiku
+  opencode:
+    thinking: github-copilot/claude-opus-4.5
+    standard: github-copilot/claude-sonnet-4.5
+    light: github-copilot/claude-haiku-4.5

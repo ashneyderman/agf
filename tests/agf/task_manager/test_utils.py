@@ -1,5 +1,5 @@
 import pytest
-from af.task_manager.utils import generate_short_id
+from agf.task_manager.utils import generate_short_id
 
 
 def test_generate_short_id_correct_length():

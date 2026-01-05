@@ -4,17 +4,17 @@ Create a plan to complete the task using the specified markdown `Plan Format`. R
 
 ## Variables
 
-af_id: $1
+agf_id: $1
 prompt: $2
 
 ## Instructions
 
-- If the af_id or prompt is not provided, stop and ask the user to provide them.
+- If the agf_id or prompt is not provided, stop and ask the user to provide them.
 - IMPORTANT: Create a plan to complete the task described in the `prompt`
 - The plan should be appropriately detailed based on the task complexity:
   - Simple tasks (chores, fixes): Focus on specific changes and validation
   - Complex tasks (features, refactors): Include design, phases, and testing strategy
-- Create the plan in the `specs/` directory with filename: `plan-{af_id}-{descriptive-name}.md`
+- Create the plan in the `specs/` directory with filename: `plan-{agf_id}-{descriptive-name}.md`
   - Replace `{descriptive-name}` with a short, descriptive name based on the task (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
 - Research the codebase starting with `README.md`
 - IMPORTANT: When you finish your plan, return only the path to the plan file created.
@@ -33,7 +33,7 @@ prompt: $2
 
 ## Metadata
 
-af_id: `{af_id}`
+agf_id: `{agf_id}`
 prompt: `{prompt}`
 task_type: <chore|feature|refactor|fix|enhancement>
 complexity: <simple|medium|complex>

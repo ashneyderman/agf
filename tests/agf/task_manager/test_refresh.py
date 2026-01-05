@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import Mock
-from af.task_manager.manager import TaskManager
-from af.task_manager.models import Task, Worktree, TaskStatus
+from agf.task_manager.manager import TaskManager
+from agf.task_manager.models import Task, Worktree, TaskStatus
 
 
 @pytest.fixture

@@ -4,15 +4,15 @@ Create a plan to complete the chore using the specified markdown `Plan Format`. 
 
 ## Variables
 
-af_id: $1
+agf_id: $1
 prompt: $2
 
 ## Instructions
 
-- If the af_id or prompt is not provided, stop and ask the user to provide them.
+- If the agf_id or prompt is not provided, stop and ask the user to provide them.
 - Create a plan to complete the chore described in the `prompt`
 - The plan should be simple, thorough, and precise
-- Create the plan in the `specs/` directory with filename: `chore-{af_id}-{descriptive-name}.md`
+- Create the plan in the `specs/` directory with filename: `chore-{agf_id}-{descriptive-name}.md`
   - Replace `{descriptive-name}` with a short, descriptive name based on the chore (e.g., "update-readme", "add-logging", "refactor-agent")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value
@@ -28,7 +28,7 @@ prompt: $2
 
 ## Metadata
 
-af_id: `{af_id}`
+agf_id: `{agf_id}`
 prompt: `{prompt}`
 
 ## Chore Description

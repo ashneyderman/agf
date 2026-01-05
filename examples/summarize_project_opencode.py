@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../"))
 
-from af.agent import AgentRunner
+from agf.agent import AgentRunner
 
 result = AgentRunner.run("opencode", "Generate a quick summary of this project")
 

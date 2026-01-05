@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `agent-wrapper`
+agf_id: `agent-wrapper`
 prompt: `Create AI agent calling wrapper that can call variety of agents (Claude Code, OpenCode) in the same manner with JSON output by default`
 task_type: feature
 complexity: complex

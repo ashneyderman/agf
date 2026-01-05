@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `af-009`
+agf_id: `agf-009`
 prompt: `looks like WorktreeInput is unused anymore. Please verify it is not needed and remove if so.`
 
 ## Chore Description

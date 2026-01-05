@@ -4,11 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from af.agent.base import AgentConfig, AgentResult
-from af.agent.claude_code import ClaudeCodeAgent
-from af.agent.exceptions import AgentError
-from af.agent.opencode import OpenCodeAgent
-from af.agent.runner import AgentRunner
+from agf.agent.base import AgentConfig, AgentResult
+from agf.agent.claude_code import ClaudeCodeAgent
+from agf.agent.exceptions import AgentError
+from agf.agent.opencode import OpenCodeAgent
+from agf.agent.runner import AgentRunner
 
 
 class TestAgentRunner:
@@ -40,8 +40,8 @@ class TestAgentRunner:
         assert "Unknown agent" in str(exc_info.value)
         assert "unknown-agent" in str(exc_info.value)
 
-    @patch("af.agent.claude_code.shutil.which")
-    @patch("af.agent.claude_code.subprocess.run")
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
     def test_run_claude_code(self, mock_run, mock_which):
         """Test running Claude Code via AgentRunner."""
         mock_which.return_value = "/usr/bin/claude"
@@ -56,8 +56,8 @@ class TestAgentRunner:
         assert result.success is True
         assert result.agent_name == "claude-code"
 
-    @patch("af.agent.opencode.shutil.which")
-    @patch("af.agent.opencode.subprocess.run")
+    @patch("agf.agent.opencode.shutil.which")
+    @patch("agf.agent.opencode.subprocess.run")
     def test_run_opencode(self, mock_run, mock_which):
         """Test running OpenCode via AgentRunner."""
         mock_which.return_value = "/usr/bin/opencode"
@@ -72,8 +72,8 @@ class TestAgentRunner:
         assert result.success is True
         assert result.agent_name == "opencode"
 
-    @patch("af.agent.claude_code.shutil.which")
-    @patch("af.agent.claude_code.subprocess.run")
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
     def test_run_with_config(self, mock_run, mock_which):
         """Test running an agent with custom configuration."""
         mock_which.return_value = "/usr/bin/claude"

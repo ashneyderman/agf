@@ -2,7 +2,7 @@
 
 ## Metadata
 
-af_id: `af-004`
+agf_id: `agf-004`
 prompt: `prompts/af-tasks-management-coded.md`
 task_type: feature
 complexity: complex
@@ -145,7 +145,7 @@ Create `task_manager/models.py` with:
 
 **Worktree Model**:
 - `worktree_name: str` - Name of the git worktree (required)
-- `af_id: str | None` - Unique worktree ID (optional, auto-generated if not provided)
+- `agf_id: str | None` - Unique worktree ID (optional, auto-generated if not provided)
 - `tasks: list[Task]` - List of tasks in this worktree (default: [])
 - `directory_path: str | None` - Path to worktree directory (optional)
 - `head_sha: str | None` - Current HEAD SHA of worktree (optional)
@@ -174,7 +174,7 @@ Create `task_manager/markdown_source.py` with:
 - `list_worktrees() -> list[Worktree]`:
   - Read Markdown file
   - Parse worktrees (lines starting with `## `)
-  - Extract worktree name and optional `{af_id}` from header
+  - Extract worktree name and optional `{agf_id}` from header
   - Parse tasks as unordered list items under each worktree
   - Parse task format: `[status, task_id, git_sha] description {tag1, tag2}`
   - Map emoji status to TaskStatus enum:
@@ -224,7 +224,7 @@ Create `task_manager/manager.py` with:
 - `add_tasks(self, raw_worktrees: list[WorktreeInput]) -> None`:
   - For each input worktree:
     - Check if worktree exists by name (deduplication)
-    - If new: create Worktree, generate af_id if missing
+    - If new: create Worktree, generate agf_id if missing
     - For each task in tasks_to_start:
       - Check if task exists by description (deduplication)
       - If new: generate task_id, assign sequence_number, create Task
@@ -426,7 +426,7 @@ STATUS_EMOJI = {
 ### Markdown Task Format
 
 ```
-## Git Worktree <worktree-name> {<af_id>}
+## Git Worktree <worktree-name> {<agf_id>}
 
 - [<status>, <task_id>, <git_sha>] <description> {<tag1>, <tag2>}
 ```
