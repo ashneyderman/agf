@@ -22,11 +22,7 @@ prompt: $2
 
 ## Codebase Structure
 
-- `README.md` - Project overview and instructions (start here)
-- `adws/` - AI Developer Workflow scripts and modules
-- `apps/` - Applications Layer
-- `.claude/commands/` - Claude command templates
-- `specs/` - Specification and plan documents
+- Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines.
 
 ## Plan Format
 
