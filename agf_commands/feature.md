@@ -12,7 +12,7 @@ prompt: $2
 - If the agf_id or prompt is not provided, stop and ask the user to provide them.
 - Create a plan to implement the feature described in the `prompt`
 - The plan should be comprehensive, well-designed, and follow existing patterns
-- Create the plan in the `specs/` directory with filename: `feature-{agf_id}-{descriptive-name}.md`
+- Create the plan in the `specs/` directory with filename: `{agf_id}-feature-{descriptive-name}.md`
   - Replace `{descriptive-name}` with a short, descriptive name based on the feature (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value

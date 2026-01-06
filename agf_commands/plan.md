@@ -14,7 +14,7 @@ prompt: $2
 - The plan should be appropriately detailed based on the task complexity:
   - Simple tasks (chores, fixes): Focus on specific changes and validation
   - Complex tasks (features, refactors): Include design, phases, and testing strategy
-- Create the plan in the `specs/` directory with filename: `plan-{agf_id}-{descriptive-name}.md`
+- Create the plan in the `specs/` directory with filename: `{agf_id}-plan-{descriptive-name}.md`
   - Replace `{descriptive-name}` with a short, descriptive name based on the task (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
 - Research the codebase starting with `README.md`
 - IMPORTANT: When you finish your plan, return only the path to the plan file created.
