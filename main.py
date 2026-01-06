@@ -8,9 +8,10 @@
 # ]
 # ///
 
+import asyncio
 import os
+import random
 import secrets
-import string
 
 import shortuuid
 from git import Repo
@@ -57,5 +58,25 @@ def git_tests():
     pass
 
 
+async def bounded_task(sem, coro):
+    async with sem:
+        return await coro
+
+
+async def job(name):
+    print(f"{name} started")
+    await asyncio.sleep(random.uniform(1, 3))
+    print(f"{name} finished")
+
+
+async def run_pooled():
+    sem = asyncio.Semaphore(4)
+
+    async with asyncio.TaskGroup() as tg:
+        for i in range(10):
+            tg.create_task(bounded_task(sem, job(f"Task-{i}")))
+
+
 if __name__ == "__main__":
     main()
+    asyncio.run(run_pooled())
