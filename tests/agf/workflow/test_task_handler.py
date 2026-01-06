@@ -96,13 +96,30 @@ class TestWorkflowTaskHandlerHelpers:
         )
         assert path == expected
 
-    def test_get_branch_name(self, mock_config, mock_task_manager, sample_worktree):
-        """Test branch name construction."""
+    def test_get_branch_name_without_worktree_id(
+        self, mock_config, mock_task_manager, sample_worktree
+    ):
+        """Test branch name construction without worktree_id."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
 
         with patch.dict(os.environ, {"USER": "alex"}):
             branch = handler._get_branch_name(sample_worktree)
             assert branch == "alex/test-feature"
+
+    def test_get_branch_name_with_worktree_id(
+        self, mock_config, mock_task_manager
+    ):
+        """Test branch name construction with worktree_id."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(
+            worktree_name="test-feature", worktree_id="SCHIP-7899"
+        )
+
+        with patch.dict(os.environ, {"USER": "alex"}):
+            branch = handler._get_branch_name(worktree_with_id)
+            assert branch == "alex/SCHIP-7899-test-feature"
 
 
 class TestWorkflowTaskHandlerWorktree:
