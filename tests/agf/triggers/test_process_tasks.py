@@ -164,6 +164,8 @@ class TestProcessTask:
     @pytest.mark.asyncio
     async def test_process_task_prints_correct_output(self, capsys):
         """Test that process_task prints task information correctly."""
+        from agf.config.models import EffectiveConfig, AgentModelConfig
+
         worktree = Worktree(
             worktree_name="feature-auth",
             worktree_id="AUTH-001",
@@ -176,21 +178,37 @@ class TestProcessTask:
             sequence_number=1,
         )
 
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=25.5):
-            await process_task(worktree, task, dry_run=True)
+        mock_task_manager = MagicMock()
+        config = EffectiveConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
+            tasks_file=Path("tasks.md"),
+            project_dir=Path("."),
+            agf_config=None,
+            sync_interval=30,
+            dry_run=True,
+            single_run=True,
+            agent="claude-code",
+            model_type="standard",
+        )
+
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
+            await process_task(worktree, task, config, mock_task_manager)
 
         captured = capsys.readouterr()
-        output_lines = captured.out.strip().split("\n")
+        output = captured.out
 
-        assert len(output_lines) == 4
-        assert output_lines[0] == "worktree: feature-auth"
-        assert output_lines[1] == "task_id: abc123"
-        assert output_lines[2] == "description: This is a very long..."  # First 5 words with ellipsis
-        assert output_lines[3] == "sleep_interval: 26"  # Rounded to nearest integer
+        assert "worktree: feature-auth" in output
+        assert "task_id: abc123" in output
+        assert "description: This is a very long..." in output  # First 5 words with ellipsis
 
     @pytest.mark.asyncio
     async def test_process_task_truncates_description(self, capsys):
         """Test that description is truncated to 5 words."""
+        from agf.config.models import EffectiveConfig, AgentModelConfig
+
         worktree = Worktree(worktree_name="wt", worktree_id="ID", tasks=[])
         task = Task(
             task_id="abc123",
@@ -199,16 +217,33 @@ class TestProcessTask:
             sequence_number=1,
         )
 
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=30.0):
-            await process_task(worktree, task, dry_run=True)
+        mock_task_manager = MagicMock()
+        config = EffectiveConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
+            tasks_file=Path("tasks.md"),
+            project_dir=Path("."),
+            agf_config=None,
+            sync_interval=30,
+            dry_run=True,
+            single_run=True,
+            agent="claude-code",
+            model_type="standard",
+        )
+
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
+            await process_task(worktree, task, config, mock_task_manager)
 
         captured = capsys.readouterr()
-        output_lines = captured.out.strip().split("\n")
-        assert output_lines[2] == "description: Short desc"  # Not truncated if shorter than 5 words
+        assert "description: Short desc" in captured.out  # Not truncated if shorter than 5 words
 
     @pytest.mark.asyncio
-    async def test_process_task_with_dry_run_no_sleep(self, capsys):
-        """Test that dry-run mode doesn't sleep."""
+    async def test_process_task_calls_handler(self):
+        """Test that process_task calls WorkflowTaskHandler."""
+        from agf.config.models import EffectiveConfig, AgentModelConfig
+
         worktree = Worktree(worktree_name="wt", worktree_id="ID", tasks=[])
         task = Task(
             task_id="abc123",
@@ -217,19 +252,34 @@ class TestProcessTask:
             sequence_number=1,
         )
 
-        import time
+        mock_task_manager = MagicMock()
+        config = EffectiveConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
+            tasks_file=Path("tasks.md"),
+            project_dir=Path("."),
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=True,
+            agent="claude-code",
+            model_type="standard",
+        )
 
-        start_time = time.time()
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=45.0):
-            await process_task(worktree, task, dry_run=True)
-        elapsed = time.time() - start_time
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
+            await process_task(worktree, task, config, mock_task_manager)
 
-        # Should complete almost instantly (no 45 second sleep)
-        assert elapsed < 1.0
+        # Verify handler was created with correct params
+        mock_handler.assert_called_once_with(config, mock_task_manager)
+        mock_handler.return_value.handle_task.assert_called_once_with(worktree, task)
 
     @pytest.mark.asyncio
-    async def test_process_task_without_dry_run_sleeps(self, capsys):
-        """Test that non-dry-run mode sleeps."""
+    async def test_process_task_reports_success(self, capsys):
+        """Test that process_task reports success correctly."""
+        from agf.config.models import EffectiveConfig, AgentModelConfig
+
         worktree = Worktree(worktree_name="wt", worktree_id="ID", tasks=[])
         task = Task(
             task_id="abc123",
@@ -238,16 +288,27 @@ class TestProcessTask:
             sequence_number=1,
         )
 
-        import time
+        mock_task_manager = MagicMock()
+        config = EffectiveConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
+            tasks_file=Path("tasks.md"),
+            project_dir=Path("."),
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=True,
+            agent="claude-code",
+            model_type="standard",
+        )
 
-        # Use a short sleep time for testing
-        start_time = time.time()
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=0.1):
-            await process_task(worktree, task, dry_run=False)
-        elapsed = time.time() - start_time
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
+            await process_task(worktree, task, config, mock_task_manager)
 
-        # Should have slept for ~0.1 seconds
-        assert elapsed >= 0.05  # Allow some tolerance
+        captured = capsys.readouterr()
+        assert "Task completed: SUCCESS" in captured.out
 
 
 class TestBoundedTask:
@@ -342,12 +403,12 @@ class TestProcessTasksParallel:
             (worktree2, task2),
         ]
 
-        from agf.config.models import EffectiveConfig
+        from agf.config.models import EffectiveConfig, AgentModelConfig
 
         config = EffectiveConfig(
             worktrees=".worktrees",
             concurrent_tasks=2,
-            agents={},
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
             tasks_file=Path("tasks.md"),
             project_dir=Path("."),
             agf_config=None,
@@ -358,7 +419,8 @@ class TestProcessTasksParallel:
             model_type="standard",
         )
 
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=20.0):
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
             count = await process_tasks_parallel(mock_task_manager, config)
 
         assert count == 2
@@ -380,12 +442,12 @@ class TestProcessTasksParallel:
         mock_task_manager = MagicMock()
         mock_task_manager.fetch_next_available_tasks.return_value = worktrees_and_tasks
 
-        from agf.config.models import EffectiveConfig
+        from agf.config.models import EffectiveConfig, AgentModelConfig
 
         config = EffectiveConfig(
             worktrees=".worktrees",
             concurrent_tasks=3,
-            agents={},
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
             tasks_file=Path("tasks.md"),
             project_dir=Path("."),
             agf_config=None,
@@ -396,7 +458,8 @@ class TestProcessTasksParallel:
             model_type="standard",
         )
 
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=0.01):
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
             count = await process_tasks_parallel(mock_task_manager, config)
 
         # Should fetch up to 3 tasks (concurrent_tasks limit)
@@ -446,12 +509,12 @@ class TestRunIteration:
         mock_task_manager = MagicMock()
         mock_task_manager.fetch_next_available_tasks.return_value = [(worktree, task)]
 
-        from agf.config.models import EffectiveConfig
+        from agf.config.models import EffectiveConfig, AgentModelConfig
 
         config = EffectiveConfig(
             worktrees=".worktrees",
             concurrent_tasks=5,
-            agents={},
+            agents={"claude-code": AgentModelConfig(thinking="opus", standard="sonnet", light="haiku")},
             tasks_file=Path("tasks.md"),
             project_dir=Path("."),
             agf_config=None,
@@ -462,7 +525,8 @@ class TestRunIteration:
             model_type="standard",
         )
 
-        with patch("agf.triggers.process_tasks.random.uniform", return_value=20.0):
+        with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
+            mock_handler.return_value.handle_task.return_value = True
             count = run_iteration(mock_task_manager, config, iteration=1)
 
         assert count == 1

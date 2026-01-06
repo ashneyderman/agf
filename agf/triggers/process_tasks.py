@@ -25,7 +25,6 @@ Examples:
 """
 
 import asyncio
-import random
 import signal
 import sys
 import time
@@ -46,6 +45,7 @@ from agf.config import (
 from agf.task_manager import TaskManager
 from agf.task_manager.markdown_source import MarkdownTaskSource
 from agf.task_manager.models import Task, TaskStatus, Worktree
+from agf.workflow import WorkflowTaskHandler
 
 
 def log(message: str, dry_run: bool = False) -> None:
@@ -96,27 +96,20 @@ def setup_signal_handlers(context: TriggerContext) -> None:
     signal.signal(signal.SIGTERM, handle_signal)
 
 
-async def process_task(worktree: Worktree, task: Task, dry_run: bool) -> None:
-    """Process a single task by simulating work.
+async def process_task(
+    worktree: Worktree, task: Task, config: EffectiveConfig, task_manager: TaskManager
+) -> None:
+    """Process a single task using WorkflowTaskHandler.
 
-    Prints task information and sleeps for a random interval to simulate
-    task processing. In dry-run mode, skips the sleep but still prints
-    the interval that would have been used.
+    Executes the task in an isolated git worktree using the configured agent.
+    The handler manages worktree creation, task status updates, and agent execution.
 
     Args:
         worktree: The worktree containing the task
         task: The task to process
-        dry_run: If True, skip the actual sleep
-
-    Output format (one per line, "<field-name>: <field-value>"):
-        - worktree: worktree.worktree_name
-        - task_id: task.task_id
-        - description: First 5 words of task.description (with ellipsis if truncated)
-        - sleep_interval: Sleep interval in seconds (rounded to nearest integer)
+        config: Effective configuration for execution
+        task_manager: Task manager for status updates
     """
-    # Generate random sleep interval between 3 and 7 seconds
-    sleep_interval = random.uniform(3, 7)
-
     # Truncate description to first 5 words with ellipsis if needed
     words = task.description.split()
     if len(words) > 5:
@@ -129,12 +122,14 @@ async def process_task(worktree: Worktree, task: Task, dry_run: bool) -> None:
     log(f"worktree: {worktree.worktree_name}")
     log(f"task_id: {task.task_id}")
     log(f"description: {truncated_desc}")
-    log(f"sleep_interval: {round(sleep_interval)}")
     log("")
 
-    # Sleep to simulate work (skip in dry-run mode)
-    if not dry_run:
-        await asyncio.sleep(sleep_interval)
+    # Execute task using WorkflowTaskHandler
+    handler = WorkflowTaskHandler(config, task_manager)
+    success = handler.handle_task(worktree, task)
+
+    log(f"Task completed: {'SUCCESS' if success else 'FAILED'}")
+    log("")
 
 
 async def bounded_task(sem: asyncio.Semaphore, coro) -> Any:
@@ -191,7 +186,9 @@ async def process_tasks_parallel(
         async with asyncio.TaskGroup() as tg:
             for worktree, task in available_tasks:
                 tg.create_task(
-                    bounded_task(sem, process_task(worktree, task, config.dry_run))
+                    bounded_task(
+                        sem, process_task(worktree, task, config, task_manager)
+                    )
                 )
     except Exception as e:
         log(f"Error during task processing: {e}", dry_run=config.dry_run)

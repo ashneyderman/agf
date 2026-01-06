@@ -1,4 +1,5 @@
 from enum import Enum
+
 from pydantic import BaseModel, Field, field_validator
 
 from .utils import generate_short_id
@@ -6,6 +7,7 @@ from .utils import generate_short_id
 
 class TaskStatus(str, Enum):
     """Enum for task status values"""
+
     NOT_STARTED = "not_started"
     BLOCKED = "blocked"
     IN_PROGRESS = "in_progress"
@@ -17,6 +19,7 @@ class Task(BaseModel):
     """
     Represents a single task within a worktree.
     """
+
     task_id: str = Field(default_factory=lambda: generate_short_id(6))
     description: str
     status: TaskStatus = TaskStatus.NOT_STARTED
@@ -24,7 +27,7 @@ class Task(BaseModel):
     tags: list[str] = Field(default_factory=list)
     commit_sha: str | None = None
 
-    @field_validator('task_id')
+    @field_validator("task_id")
     @classmethod
     def validate_task_id(cls, v: str) -> str:
         """Validate that task_id is 6 lowercase characters"""
@@ -41,13 +44,14 @@ class Worktree(BaseModel):
     """
     Represents a git worktree containing tasks.
     """
+
     worktree_name: str
     worktree_id: str | None = None
     tasks: list[Task] = Field(default_factory=list)
     directory_path: str | None = None
     head_sha: str | None = None
 
-    @field_validator('worktree_name')
+    @field_validator("worktree_name")
     @classmethod
     def validate_worktree_name(cls, v: str) -> str:
         """Validate that worktree_name is not empty"""
