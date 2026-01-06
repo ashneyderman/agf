@@ -126,7 +126,10 @@ async def process_task(
 
     # Execute task using WorkflowTaskHandler
     handler = WorkflowTaskHandler(config, task_manager)
-    success = handler.handle_task(worktree, task)
+
+    # Run blocking handle_task in executor to allow parallel execution
+    loop = asyncio.get_event_loop()
+    success = await loop.run_in_executor(None, handler.handle_task, worktree, task)
 
     log(f"Task completed: {'SUCCESS' if success else 'FAILED'}")
     log("")

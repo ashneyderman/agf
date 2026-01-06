@@ -64,8 +64,9 @@ async def bounded_task(sem, coro):
 
 
 async def job(name):
-    print(f"{name} started")
-    await asyncio.sleep(random.uniform(1, 3))
+    sleep_time = random.uniform(1, 3)
+    print(f"{name} started will finish in {sleep_time:.0f}")
+    await asyncio.sleep(sleep_time)
     print(f"{name} finished")
 
 
