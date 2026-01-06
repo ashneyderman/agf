@@ -1,6 +1,5 @@
 from .models import Task, TaskStatus, Worktree
 from .source import TaskSource
-from .utils import generate_short_id
 
 
 class TaskManager:

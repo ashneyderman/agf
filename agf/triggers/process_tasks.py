@@ -114,8 +114,8 @@ async def process_task(worktree: Worktree, task: Task, dry_run: bool) -> None:
         - description: First 5 words of task.description (with ellipsis if truncated)
         - sleep_interval: Sleep interval in seconds (rounded to nearest integer)
     """
-    # Generate random sleep interval between 15 and 45 seconds
-    sleep_interval = random.uniform(15, 45)
+    # Generate random sleep interval between 3 and 7 seconds
+    sleep_interval = random.uniform(3, 7)
 
     # Truncate description to first 5 words with ellipsis if needed
     words = task.description.split()
@@ -125,10 +125,12 @@ async def process_task(worktree: Worktree, task: Task, dry_run: bool) -> None:
         truncated_desc = task.description
 
     # Print task information
-    print(f"worktree: {worktree.worktree_name}")
-    print(f"task_id: {task.task_id}")
-    print(f"description: {truncated_desc}")
-    print(f"sleep_interval: {round(sleep_interval)}")
+    log("---")
+    log(f"worktree: {worktree.worktree_name}")
+    log(f"task_id: {task.task_id}")
+    log(f"description: {truncated_desc}")
+    log(f"sleep_interval: {round(sleep_interval)}")
+    log("")
 
     # Sleep to simulate work (skip in dry-run mode)
     if not dry_run:
@@ -216,6 +218,8 @@ def run_iteration(
     """
     log(f"--- Iteration {iteration} ---", dry_run=config.dry_run)
     start_time = time.time()
+
+    task_manager.refresh_from_source()
 
     # Process tasks
     tasks_processed = asyncio.run(process_tasks_parallel(task_manager, config))
