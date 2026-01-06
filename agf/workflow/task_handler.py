@@ -217,7 +217,9 @@ class WorkflowTaskHandler:
         model = getattr(agent_config, self.config.model_type)
 
         # Create agent configuration
-        agent_cfg = AgentConfig(model=model, working_dir=worktree_path)
+        agent_cfg = AgentConfig(
+            model=model, working_dir=worktree_path, skip_permissions=True, max_turns=5
+        )
 
         # Execute agent
         self._log(f"Executing agent {self.config.agent} with model {model}")
