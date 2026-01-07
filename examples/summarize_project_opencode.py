@@ -9,7 +9,28 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../"))
 
 from agf.agent import AgentRunner
 
-result = AgentRunner.run("opencode", "Generate a quick summary of this project")
+result = AgentRunner.run(
+    "opencode",
+    """
+    Generate a quick summary of this project
+
+    ## Output Format
+
+    IMPORTANT: Return a JSON with this structure:
+
+    ```json
+    {
+      "summary": "short summary of the project",
+      "core_components": [
+        {
+          "name": "name of the component",
+          "description": "description of the component"
+        }
+      ]
+    }
+    ```
+    """,
+)
 
 print(f"duration_seconds: {result.duration_seconds}")
 print(f"exit_code: {result.exit_code}")
