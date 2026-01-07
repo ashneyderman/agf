@@ -11,7 +11,7 @@ from datetime import datetime
 from git import Repo
 
 from agf.agent import AgentRunner
-from agf.agent.base import AgentConfig, AgentResult
+from agf.agent.base import AgentConfig, AgentResult, ModelType
 from agf.config.models import EffectiveConfig
 from agf.git_repo import mk_worktree
 from agf.task_manager import TaskManager
@@ -215,8 +215,7 @@ class WorkflowTaskHandler:
         Returns:
             AgentResult containing execution status and output
         """
-        # Construct prompt using /agf:test-prompt skill
-        prompt = f"/agf:test-prompt {task.task_id} {task.description}"
+        prompt = f"/agf:empty-commit {task.task_id} {task.description}"
 
         # Resolve model from configuration
         agent_config = self.config.agents[self.config.agent]
@@ -224,7 +223,10 @@ class WorkflowTaskHandler:
 
         # Create agent configuration
         agent_cfg = AgentConfig(
-            model=model, working_dir=worktree_path, skip_permissions=True, max_turns=5
+            model=ModelType.LIGHT,
+            working_dir=worktree_path,
+            skip_permissions=True,
+            max_turns=5,
         )
 
         # Execute agent
