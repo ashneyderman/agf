@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from .base import ModelType
 
 
-class PromptTemplate(BaseModel):
+class CommandTemplate(BaseModel):
     """Template for structuring agent prompts with metadata and configuration.
 
-    PromptTemplate provides a unified interface for passing prompts to agents,
+    CommandTemplate provides a unified interface for passing prompts to agents,
     encapsulating both the prompt content and execution parameters in a single
     structured object.
 
@@ -27,21 +27,21 @@ class PromptTemplate(BaseModel):
 
     Example:
         ```python
-        from agf.agent.models import PromptTemplate
+        from agf.agent.models import CommandTemplate
         from agf.agent.base import ModelType
 
         # Simple prompt
-        template = PromptTemplate(prompt="Explain this code")
+        template = CommandTemplate(prompt="Explain this code")
 
         # Prompt with JSON output and specific model
-        template = PromptTemplate(
+        template = CommandTemplate(
             prompt="Analyze this bug and return JSON",
             json_output=True,
             model=ModelType.THINKING
         )
 
         # Prompt with namespace and params
-        template = PromptTemplate(
+        template = CommandTemplate(
             namespace="custom",
             prompt="Process file: {filename}",
             params=["example.py"]

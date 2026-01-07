@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from .models import PromptTemplate
+    from .models import CommandTemplate
 
 # Type alias for JSON values - any valid JSON type
 JSONValue = dict[str, Any] | list[Any] | str | int | float | bool | None
@@ -204,7 +204,7 @@ class Agent(Protocol):
         ...
 
     def run_prompt(
-        self, prompt_template: "PromptTemplate", config: AgentConfig | None = None
+        self, prompt_template: "CommandTemplate", config: AgentConfig | None = None
     ) -> AgentResult:
         """Execute the agent with a structured prompt template.
 

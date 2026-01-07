@@ -14,7 +14,7 @@ from .exceptions import (
     AgentOutputParseError,
     AgentTimeoutError,
 )
-from .models import PromptTemplate
+from .models import CommandTemplate
 
 
 class ClaudeCodeAgent:
@@ -91,7 +91,7 @@ class ClaudeCodeAgent:
         return agent_result
 
     def run_prompt(
-        self, prompt_template: PromptTemplate, config: AgentConfig | None = None
+        self, prompt_template: CommandTemplate, config: AgentConfig | None = None
     ) -> AgentResult:
         """Execute Claude Code with a structured prompt template.
 

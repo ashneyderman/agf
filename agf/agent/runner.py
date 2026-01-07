@@ -5,7 +5,7 @@ from typing import Type
 from .base import Agent, AgentConfig, AgentResult
 from .claude_code import ClaudeCodeAgent
 from .exceptions import AgentError
-from .models import PromptTemplate
+from .models import CommandTemplate
 from .opencode import OpenCodeAgent
 
 
@@ -54,7 +54,7 @@ class AgentRunner:
     def run_prompt(
         cls,
         agent_name: str,
-        prompt_template: PromptTemplate,
+        prompt_template: CommandTemplate,
         config: AgentConfig | None = None,
     ) -> AgentResult:
         """Run an agent by name with a structured prompt template.

@@ -12,6 +12,7 @@ from git import Repo
 
 from agf.agent import AgentRunner
 from agf.agent.base import AgentConfig, AgentResult, ModelType
+from agf.agent.models import CommandTemplate
 from agf.config.models import EffectiveConfig
 from agf.git_repo import mk_worktree
 from agf.task_manager import TaskManager
@@ -223,7 +224,6 @@ class WorkflowTaskHandler:
 
         # Create agent configuration
         agent_cfg = AgentConfig(
-            model=ModelType.LIGHT,
             working_dir=worktree_path,
             skip_permissions=True,
             max_turns=5,
@@ -271,6 +271,8 @@ class WorkflowTaskHandler:
             )
 
             # Execute agent task
+            #
+            # CommandTemplate(prompt="empty-commit", model=ModelType.LIGHT)
             result = self._execute_agent_task(task, worktree_path)
 
             # Update task status based on result
