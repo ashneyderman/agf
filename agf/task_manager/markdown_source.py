@@ -1,4 +1,5 @@
 import re
+import threading
 from pathlib import Path
 
 from .models import Task, Worktree, TaskStatus
@@ -33,6 +34,7 @@ class MarkdownTaskSource:
             file_path: Path to the Markdown task file
         """
         self.file_path = Path(file_path)
+        self._file_lock = threading.Lock()
 
     def list_worktrees(self) -> list[Worktree]:
         """
@@ -41,76 +43,77 @@ class MarkdownTaskSource:
         Returns:
             List of Worktree objects with populated tasks
         """
-        if not self.file_path.exists():
-            return []
+        with self._file_lock:
+            if not self.file_path.exists():
+                return []
 
-        content = self.file_path.read_text()
-        lines = content.split('\n')
+            content = self.file_path.read_text()
+            lines = content.split('\n')
 
-        worktrees = []
-        current_worktree = None
-        sequence_number = 0
-        current_task_lines = []
+            worktrees = []
+            current_worktree = None
+            sequence_number = 0
+            current_task_lines = []
 
-        for i, line in enumerate(lines):
-            # Check for worktree header
-            if line.startswith('## '):
-                # Parse any pending task
-                if current_task_lines and current_worktree:
+            for i, line in enumerate(lines):
+                # Check for worktree header
+                if line.startswith('## '):
+                    # Parse any pending task
+                    if current_task_lines and current_worktree:
+                        task = self._parse_task_lines(current_task_lines, sequence_number)
+                        if task:
+                            current_worktree.tasks.append(task)
+                            sequence_number += 1
+                        current_task_lines = []
+
+                    # Save previous worktree if any
+                    if current_worktree:
+                        worktrees.append(current_worktree)
+
+                    # Parse new worktree
+                    worktree_name, worktree_id = self._parse_worktree_header(line)
+                    current_worktree = Worktree(
+                        worktree_name=worktree_name,
+                        worktree_id=worktree_id,
+                        tasks=[]
+                    )
+                    sequence_number = 0
+
+                # Check for task line (unordered list item)
+                elif line.strip().startswith('- [') and current_worktree:
+                    # Parse any previous task
+                    if current_task_lines:
+                        task = self._parse_task_lines(current_task_lines, sequence_number)
+                        if task:
+                            current_worktree.tasks.append(task)
+                            sequence_number += 1
+
+                    # Start new task
+                    current_task_lines = [line]
+
+                # Check for continuation line (indented, following a task)
+                elif current_task_lines and line and line[0] in ' \t' and current_worktree:
+                    current_task_lines.append(line)
+
+                # Empty line or other content - finish current task if any
+                elif current_task_lines and current_worktree:
                     task = self._parse_task_lines(current_task_lines, sequence_number)
                     if task:
                         current_worktree.tasks.append(task)
                         sequence_number += 1
                     current_task_lines = []
 
-                # Save previous worktree if any
-                if current_worktree:
-                    worktrees.append(current_worktree)
-
-                # Parse new worktree
-                worktree_name, worktree_id = self._parse_worktree_header(line)
-                current_worktree = Worktree(
-                    worktree_name=worktree_name,
-                    worktree_id=worktree_id,
-                    tasks=[]
-                )
-                sequence_number = 0
-
-            # Check for task line (unordered list item)
-            elif line.strip().startswith('- [') and current_worktree:
-                # Parse any previous task
-                if current_task_lines:
-                    task = self._parse_task_lines(current_task_lines, sequence_number)
-                    if task:
-                        current_worktree.tasks.append(task)
-                        sequence_number += 1
-
-                # Start new task
-                current_task_lines = [line]
-
-            # Check for continuation line (indented, following a task)
-            elif current_task_lines and line and line[0] in ' \t' and current_worktree:
-                current_task_lines.append(line)
-
-            # Empty line or other content - finish current task if any
-            elif current_task_lines and current_worktree:
+            # Parse any final pending task
+            if current_task_lines and current_worktree:
                 task = self._parse_task_lines(current_task_lines, sequence_number)
                 if task:
                     current_worktree.tasks.append(task)
-                    sequence_number += 1
-                current_task_lines = []
 
-        # Parse any final pending task
-        if current_task_lines and current_worktree:
-            task = self._parse_task_lines(current_task_lines, sequence_number)
-            if task:
-                current_worktree.tasks.append(task)
+            # Don't forget the last worktree
+            if current_worktree:
+                worktrees.append(current_worktree)
 
-        # Don't forget the last worktree
-        if current_worktree:
-            worktrees.append(current_worktree)
-
-        return worktrees
+            return worktrees
 
     def update_task_status(
         self,
@@ -128,29 +131,30 @@ class MarkdownTaskSource:
             status: New status
             commit_sha: Optional commit SHA to add
         """
-        content = self.file_path.read_text()
-        lines = content.split('\n')
+        with self._file_lock:
+            content = self.file_path.read_text()
+            lines = content.split('\n')
 
-        current_worktree = None
-        updated_lines = []
+            current_worktree = None
+            updated_lines = []
 
-        for line in lines:
-            if line.startswith('## '):
-                wt_name, _ = self._parse_worktree_header(line)
-                current_worktree = wt_name
-                updated_lines.append(line)
-            elif line.strip().startswith('- [') and current_worktree == worktree_name:
-                # Check if this is the task we're looking for
-                if f', {task_id},' in line or f', {task_id}]' in line:
-                    # Update this task
-                    updated_line = self._update_task_line(line, status, commit_sha)
-                    updated_lines.append(updated_line)
+            for line in lines:
+                if line.startswith('## '):
+                    wt_name, _ = self._parse_worktree_header(line)
+                    current_worktree = wt_name
+                    updated_lines.append(line)
+                elif line.strip().startswith('- [') and current_worktree == worktree_name:
+                    # Check if this is the task we're looking for
+                    if f', {task_id},' in line or f', {task_id}]' in line:
+                        # Update this task
+                        updated_line = self._update_task_line(line, status, commit_sha)
+                        updated_lines.append(updated_line)
+                    else:
+                        updated_lines.append(line)
                 else:
                     updated_lines.append(line)
-            else:
-                updated_lines.append(line)
 
-        self.file_path.write_text('\n'.join(updated_lines))
+            self.file_path.write_text('\n'.join(updated_lines))
 
     def update_task_id(
         self,
@@ -166,31 +170,32 @@ class MarkdownTaskSource:
             sequence_number: Position of the task in the worktree
             task_id: The task ID to insert
         """
-        content = self.file_path.read_text()
-        lines = content.split('\n')
+        with self._file_lock:
+            content = self.file_path.read_text()
+            lines = content.split('\n')
 
-        current_worktree = None
-        current_sequence = 0
-        updated_lines = []
+            current_worktree = None
+            current_sequence = 0
+            updated_lines = []
 
-        for line in lines:
-            if line.startswith('## '):
-                wt_name, _ = self._parse_worktree_header(line)
-                current_worktree = wt_name
-                current_sequence = 0
-                updated_lines.append(line)
-            elif line.strip().startswith('- [') and current_worktree == worktree_name:
-                if current_sequence == sequence_number:
-                    # Insert task_id into this line
-                    updated_line = self._insert_task_id(line, task_id)
-                    updated_lines.append(updated_line)
+            for line in lines:
+                if line.startswith('## '):
+                    wt_name, _ = self._parse_worktree_header(line)
+                    current_worktree = wt_name
+                    current_sequence = 0
+                    updated_lines.append(line)
+                elif line.strip().startswith('- [') and current_worktree == worktree_name:
+                    if current_sequence == sequence_number:
+                        # Insert task_id into this line
+                        updated_line = self._insert_task_id(line, task_id)
+                        updated_lines.append(updated_line)
+                    else:
+                        updated_lines.append(line)
+                    current_sequence += 1
                 else:
                     updated_lines.append(line)
-                current_sequence += 1
-            else:
-                updated_lines.append(line)
 
-        self.file_path.write_text('\n'.join(updated_lines))
+            self.file_path.write_text('\n'.join(updated_lines))
 
     def mark_task_error(
         self,
