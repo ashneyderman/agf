@@ -7,6 +7,7 @@ execution by managing git worktrees, executing agents, and tracking task status.
 import os
 import os.path
 from datetime import datetime
+from imaplib import Commands
 
 from git import Repo
 
@@ -206,21 +207,21 @@ class WorkflowTaskHandler:
             self._log(f"Error initializing worktree: {e}")
             raise
 
-    def _execute_agent_task(self, task: Task, worktree_path: str) -> AgentResult:
-        """Execute the agent task in the specified worktree.
+    def _execute_command(
+        self, worktree_path: str, command_template: CommandTemplate
+    ) -> AgentResult:
+        """Execute the command with the agent in the specified worktree.
 
         Args:
-            task: Task object containing task metadata
             worktree_path: Path to the worktree directory
+            command_template: CommandTemplate object containing command metadata
 
         Returns:
             AgentResult containing execution status and output
         """
-        prompt = f"/agf:empty-commit {task.task_id} {task.description}"
-
         # Resolve model from configuration
         agent_config = self.config.agents[self.config.agent]
-        model = getattr(agent_config, self.config.model_type)
+        model = getattr(agent_config, command_template.model or self.config.model_type)
 
         # Create agent configuration
         agent_cfg = AgentConfig(
@@ -230,9 +231,11 @@ class WorkflowTaskHandler:
         )
 
         # Execute agent
-        self._log(f"Executing agent {self.config.agent} with model {model}")
-        result = AgentRunner.run(
-            agent_name=self.config.agent, prompt=prompt, config=agent_cfg
+        self._log(f"Running agent command {self.config.agent} with model {model}")
+        result = AgentRunner.run_prompt(
+            agent_name=self.config.agent,
+            prompt_template=command_template,
+            config=agent_cfg,
         )
         self._log(
             f"Agent execution completed: success={result.success}, exit_code={result.exit_code}"
@@ -271,19 +274,28 @@ class WorkflowTaskHandler:
             )
 
             # Execute agent task
-            #
-            # CommandTemplate(prompt="empty-commit", model=ModelType.LIGHT)
-            result = self._execute_agent_task(task, worktree_path)
+            result = self._execute_command(
+                worktree_path,
+                CommandTemplate(
+                    prompt="empty-commit",
+                    params=[task.task_id, task.description],
+                    model=ModelType.STANDARD,
+                    json_output=True,
+                ),
+            )
 
             # Update task status based on result
             if result.success:
                 # Task completed successfully
-                commit_sha = None  # Can be extracted from result if available
+                commit_sha = isinstance(
+                    result.json_output, dict
+                ) and result.json_output.get("commit_sha")
+
                 self.task_manager.update_task_status(
                     worktree.worktree_name,
                     task.task_id,
                     TaskStatus.COMPLETED,
-                    commit_sha=commit_sha,
+                    commit_sha=str(commit_sha) if commit_sha else None,
                 )
                 self._log(f"Task {task.task_id} completed successfully")
                 return True

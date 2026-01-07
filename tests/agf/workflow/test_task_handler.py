@@ -270,8 +270,9 @@ class TestWorkflowTaskHandlerIntegration:
             exit_code=0,
             duration_seconds=10.0,
             agent_name="claude-code",
+            json_output={"commit_sha": "abc123def456"},
         )
-        mock_agent_runner.run.return_value = mock_result
+        mock_agent_runner.run_prompt.return_value = mock_result
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -291,7 +292,7 @@ class TestWorkflowTaskHandlerIntegration:
         )
         # Second call: COMPLETED
         mock_task_manager.update_task_status.assert_any_call(
-            "test-feature", "abc123", TaskStatus.COMPLETED, commit_sha=None
+            "test-feature", "abc123", TaskStatus.COMPLETED, commit_sha="abc123def456"
         )
 
     @patch("agf.workflow.task_handler.AgentRunner")
@@ -317,7 +318,7 @@ class TestWorkflowTaskHandlerIntegration:
             agent_name="claude-code",
             error="Agent encountered an error",
         )
-        mock_agent_runner.run.return_value = mock_result
+        mock_agent_runner.run_prompt.return_value = mock_result
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
