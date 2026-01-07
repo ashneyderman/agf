@@ -1,0 +1,45 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "duration_ms": 44857,
+  "duration_api_ms": 62113,
+  "num_turns": 16,
+  "result": "Based on my exploration of the project, here's the summary in JSON format:\n\n```json\n{\n  \"summary\": \"Agentic Flow is an orchestration framework for AI coding agents that automates SDLC workflows by managing task execution across isolated git worktrees with support for multiple agent implementations (Claude Code, OpenCode).\",\n  \"core_components\": [\n    {\n      \"name\": \"Task Manager\",\n      \"description\": \"Singleton manager that handles task state, persistence, and reconciliation. Manages worktrees and tasks in memory while coordinating with TaskSource for markdown-based persistence. Supports task selection, status updates, and error tracking.\"\n    },\n    {\n      \"name\": \"Agent Abstraction Layer\",\n      \"description\": \"Provides a unified interface for different AI coding agents (Claude Code, OpenCode) with model type mappings (thinking/standard/light), configuration management, and execution results. Enables agent-agnostic workflow execution.\"\n    },\n    {\n      \"name\": \"Workflow Task Handler\",\n      \"description\": \"Orchestrates task execution in isolated git worktrees by managing worktree initialization, branch creation, agent invocation, and task status lifecycle (NOT_STARTED -> IN_PROGRESS -> COMPLETED/FAILED).\"\n    },\n    {\n      \"name\": \"Process Tasks Trigger\",\n      \"description\": \"Automated trigger system that discovers tasks from markdown files and executes them in parallel with bounded concurrency. Supports single-run and continuous scheduling modes with configurable sync intervals.\"\n    },\n    {\n      \"name\": \"Configuration System\",\n      \"description\": \"Multi-level configuration management with precedence (CLI > AGF config > defaults) supporting agent selection, model types, concurrency limits, and project-specific settings through YAML files.\"\n    },\n    {\n      \"name\": \"Git Worktree Management\",\n      \"description\": \"Handles creation and validation of isolated git worktrees with branch naming conventions (username/worktree_id-worktree_name), enabling parallel task execution without conflicts.\"\n    },\n    {\n      \"name\": \"AGF Commands/Skills\",\n      \"description\": \"Collection of predefined command templates and prompts (plan, feature, chore, implement, etc.) that agents execute to perform common SDLC activities like planning, implementation, and git operations.\"\n    }\n  ]\n}\n```",
+  "session_id": "3a8995ef-8a68-4b33-9d88-0f9ea744e4ae",
+  "total_cost_usd": 0.180134,
+  "usage": {
+    "input_tokens": 473,
+    "cache_creation_input_tokens": 27155,
+    "cache_read_input_tokens": 128550,
+    "output_tokens": 1632,
+    "server_tool_use": { "web_search_requests": 0, "web_fetch_requests": 0 },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 27155
+    }
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 4486,
+      "outputTokens": 359,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.006281,
+      "contextWindow": 200000
+    },
+    "claude-sonnet-4-5-20250929": {
+      "inputTokens": 476,
+      "outputTokens": 1869,
+      "cacheReadInputTokens": 128550,
+      "cacheCreationInputTokens": 28220,
+      "webSearchRequests": 0,
+      "costUSD": 0.17385299999999998,
+      "contextWindow": 200000
+    }
+  },
+  "permission_denials": [],
+  "uuid": "7acb545a-f367-4b76-a0c2-ed3ae75a2e92"
+}

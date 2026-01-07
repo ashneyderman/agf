@@ -1,12 +1,13 @@
 """OpenCode agent implementation."""
 
 import json
+import re
 import shutil
 import subprocess
 import time
 from typing import Any
 
-from .base import Agent, AgentConfig, AgentResult, ModelMapping
+from .base import Agent, AgentConfig, AgentResult, JSONValue, ModelMapping
 from .exceptions import (
     AgentExecutionError,
     AgentNotFoundError,
@@ -71,7 +72,8 @@ class OpenCodeAgent:
                 agent_name=self.name,
             )
 
-        return AgentResult(
+        # Create successful result
+        agent_result = AgentResult(
             success=True,
             output=output,
             parsed_output=parsed_output,
@@ -80,6 +82,12 @@ class OpenCodeAgent:
             duration_seconds=duration,
             agent_name=self.name,
         )
+
+        # Extract JSON output if requested
+        if config.json_output:
+            agent_result.json_output = self.extract_json_output(agent_result)
+
+        return agent_result
 
     def _build_command(self, prompt: str, config: AgentConfig) -> list[str]:
         """Build the CLI command with all options."""
@@ -143,3 +151,49 @@ class OpenCodeAgent:
                 ) from e
 
         return events
+
+    def extract_json_output(self, result: AgentResult) -> JSONValue:
+        """Extract JSON output from OpenCode result.
+
+        OpenCode returns JSONL (newline-delimited JSON) where each line is an event.
+        Text events contain the actual output. This method searches for ```json blocks
+        within text events and extracts the first one found.
+
+        Args:
+            result: The agent result containing parsed output
+
+        Returns:
+            Extracted JSON value (can be dict, list, str, int, float, bool, or None)
+        """
+        if not result.parsed_output or not isinstance(result.parsed_output, list):
+            return None
+
+        # Search through all events for text-type events
+        for event in result.parsed_output:
+            if not isinstance(event, dict):
+                continue
+
+            # Check if this is a text event
+            if event.get("type") != "text":
+                continue
+
+            # Get the part object and its text field
+            part = event.get("part", {})
+            if not isinstance(part, dict):
+                continue
+
+            text_content = part.get("text")
+            if not text_content or not isinstance(text_content, str):
+                continue
+
+            # Search for ```json blocks (case insensitive)
+            pattern = r"```json\s*\n(.*?)\n```"
+            match = re.search(pattern, text_content, re.IGNORECASE | re.DOTALL)
+            if match:
+                json_content = match.group(1).strip()
+                try:
+                    return json.loads(json_content)
+                except json.JSONDecodeError:
+                    continue
+
+        return None

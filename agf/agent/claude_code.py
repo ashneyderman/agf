@@ -1,12 +1,13 @@
 """Claude Code agent implementation."""
 
 import json
+import re
 import shutil
 import subprocess
 import time
 from typing import Any
 
-from .base import Agent, AgentConfig, AgentResult, ModelMapping
+from .base import Agent, AgentConfig, AgentResult, JSONValue, ModelMapping
 from .exceptions import (
     AgentExecutionError,
     AgentNotFoundError,
@@ -71,7 +72,8 @@ class ClaudeCodeAgent:
                 agent_name=self.name,
             )
 
-        return AgentResult(
+        # Create successful result
+        agent_result = AgentResult(
             success=True,
             output=output,
             parsed_output=parsed_output,
@@ -80,6 +82,12 @@ class ClaudeCodeAgent:
             duration_seconds=duration,
             agent_name=self.name,
         )
+
+        # Extract JSON output if requested
+        if config.json_output:
+            agent_result.json_output = self.extract_json_output(agent_result)
+
+        return agent_result
 
     def _build_command(self, prompt: str, config: AgentConfig) -> list[str]:
         """Build the CLI command with all options."""
@@ -133,3 +141,36 @@ class ClaudeCodeAgent:
             raise AgentOutputParseError(
                 self.name, output, f"Invalid JSON: {e}"
             ) from e
+
+    def extract_json_output(self, result: AgentResult) -> JSONValue:
+        """Extract JSON output from Claude Code result.
+
+        Claude Code returns structured JSON with a "result" field containing
+        the actual text output. This method searches for ```json blocks within
+        that result field and extracts the first one found.
+
+        Args:
+            result: The agent result containing parsed output
+
+        Returns:
+            Extracted JSON value (can be dict, list, str, int, float, bool, or None)
+        """
+        if not result.parsed_output or not isinstance(result.parsed_output, dict):
+            return None
+
+        # Get the result field from parsed output
+        result_text = result.parsed_output.get("result")
+        if not result_text or not isinstance(result_text, str):
+            return None
+
+        # Search for ```json blocks (case insensitive)
+        pattern = r"```json\s*\n(.*?)\n```"
+        match = re.search(pattern, result_text, re.IGNORECASE | re.DOTALL)
+        if not match:
+            return None
+
+        json_content = match.group(1).strip()
+        try:
+            return json.loads(json_content)
+        except json.JSONDecodeError:
+            return None

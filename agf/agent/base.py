@@ -1,9 +1,12 @@
 """Base abstractions for the agent package."""
 
 from enum import Enum
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
+
+# Type alias for JSON values - any valid JSON type
+JSONValue = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 
 class AgentType(str, Enum):
@@ -157,6 +160,7 @@ class AgentResult(BaseModel):
     agent_name: str
     parsed_output: dict | list | None = None
     error: str | None = None
+    json_output: JSONValue = None
 
 
 class AgentConfig(BaseModel):
@@ -167,6 +171,7 @@ class AgentConfig(BaseModel):
     working_dir: str | None = None
     output_format: str = "json"
     extra_args: list[str] = Field(default_factory=list)
+    json_output: bool = False
 
     # Claude Code specific options
     skip_permissions: bool = False
@@ -190,4 +195,15 @@ class Agent(Protocol):
 
     def run(self, prompt: str, config: AgentConfig | None = None) -> AgentResult:
         """Execute the agent with the given prompt and configuration."""
+        ...
+
+    def extract_json_output(self, result: AgentResult) -> JSONValue:
+        """Extract JSON output from agent result.
+
+        Args:
+            result: The agent result containing output to parse
+
+        Returns:
+            Extracted JSON value (can be dict, list, str, int, float, bool, or None)
+        """
         ...
