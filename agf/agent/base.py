@@ -1,9 +1,12 @@
 """Base abstractions for the agent package."""
 
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from .models import PromptTemplate
 
 # Type alias for JSON values - any valid JSON type
 JSONValue = dict[str, Any] | list[Any] | str | int | float | bool | None
@@ -194,7 +197,28 @@ class Agent(Protocol):
         ...
 
     def run(self, prompt: str, config: AgentConfig | None = None) -> AgentResult:
-        """Execute the agent with the given prompt and configuration."""
+        """Execute the agent with the given prompt and configuration.
+
+        Deprecated: Use run_prompt() instead for structured prompt execution.
+        """
+        ...
+
+    def run_prompt(
+        self, prompt_template: "PromptTemplate", config: AgentConfig | None = None
+    ) -> AgentResult:
+        """Execute the agent with a structured prompt template.
+
+        This method provides a unified interface for prompt execution, supporting
+        namespace organization, parameter templating, JSON output extraction,
+        and per-prompt model selection.
+
+        Args:
+            prompt_template: Structured prompt with metadata and configuration
+            config: Optional execution configuration (timeout, working dir, etc.)
+
+        Returns:
+            AgentResult containing the execution outcome and any extracted data
+        """
         ...
 
     def extract_json_output(self, result: AgentResult) -> JSONValue:

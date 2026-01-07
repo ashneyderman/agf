@@ -14,6 +14,7 @@ from .exceptions import (
     AgentOutputParseError,
     AgentTimeoutError,
 )
+from .models import PromptTemplate
 
 
 class ClaudeCodeAgent:
@@ -88,6 +89,41 @@ class ClaudeCodeAgent:
             agent_result.json_output = self.extract_json_output(agent_result)
 
         return agent_result
+
+    def run_prompt(
+        self, prompt_template: PromptTemplate, config: AgentConfig | None = None
+    ) -> AgentResult:
+        """Execute Claude Code with a structured prompt template.
+
+        This method provides a unified interface for prompt execution, merging
+        template-level configuration (model, json_output) with execution-level
+        configuration (timeout, working directory, etc.).
+
+        Args:
+            prompt_template: Structured prompt with metadata and configuration
+            config: Optional execution configuration (timeout, working dir, etc.)
+
+        Returns:
+            AgentResult containing the execution outcome and any extracted data
+        """
+        # Initialize config if not provided
+        config = config or AgentConfig()
+
+        # Merge template configuration into config
+        # Template values take precedence over config defaults
+        if prompt_template.model is not None:
+            config.model = prompt_template.model.value
+
+        if prompt_template.json_output:
+            config.json_output = True
+
+        # Format prompt with namespace and params
+        # Escape double quotes in params to prevent command parsing issues
+        params_str = " ".join(str(p).replace('"', '\\"') for p in prompt_template.params) if prompt_template.params else ""
+        prompt = f"/{prompt_template.namespace}:{prompt_template.prompt} {params_str}".rstrip()
+
+        # Execute using the existing run method with merged config
+        return self.run(prompt, config)
 
     def _build_command(self, prompt: str, config: AgentConfig) -> list[str]:
         """Build the CLI command with all options."""

@@ -5,6 +5,7 @@ from typing import Type
 from .base import Agent, AgentConfig, AgentResult
 from .claude_code import ClaudeCodeAgent
 from .exceptions import AgentError
+from .models import PromptTemplate
 from .opencode import OpenCodeAgent
 
 
@@ -42,9 +43,39 @@ class AgentRunner:
         prompt: str,
         config: AgentConfig | None = None,
     ) -> AgentResult:
-        """Run an agent by name with the given prompt."""
+        """Run an agent by name with the given prompt.
+
+        Deprecated: Use run_prompt() for structured prompt execution.
+        """
         agent = cls.get_agent(agent_name)
         return agent.run(prompt, config)
+
+    @classmethod
+    def run_prompt(
+        cls,
+        agent_name: str,
+        prompt_template: PromptTemplate,
+        config: AgentConfig | None = None,
+    ) -> AgentResult:
+        """Run an agent by name with a structured prompt template.
+
+        This method provides a unified interface for prompt execution, supporting
+        namespace organization, parameter templating, JSON output extraction,
+        and per-prompt model selection.
+
+        Args:
+            agent_name: Name of the registered agent to execute
+            prompt_template: Structured prompt with metadata and configuration
+            config: Optional execution configuration (timeout, working dir, etc.)
+
+        Returns:
+            AgentResult containing the execution outcome and any extracted data
+
+        Raises:
+            AgentError: If the agent name is not registered
+        """
+        agent = cls.get_agent(agent_name)
+        return agent.run_prompt(prompt_template, config)
 
 
 # Pre-register built-in agents

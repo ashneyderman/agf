@@ -7,7 +7,11 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../"))
 
-from agf.agent import AgentRunner
+from agf.agent import AgentConfig, AgentRunner
+
+config = AgentConfig(
+    json_output=True,
+)
 
 result = AgentRunner.run(
     "claude-code",
@@ -30,6 +34,7 @@ result = AgentRunner.run(
     }
     ```
     """,
+    config=config,
 )
 
 print(f"duration_seconds: {result.duration_seconds}")
@@ -37,4 +42,5 @@ print(f"exit_code: {result.exit_code}")
 print(f"error: {result.error}")
 print(f"output: {result.output}")
 print(f"parsed_output: {result.parsed_output}")
+print(f"json_output: {result.json_output}")
 print(f"agent_name: {result.agent_name}")
