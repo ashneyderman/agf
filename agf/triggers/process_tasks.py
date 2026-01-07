@@ -316,6 +316,18 @@ def validate_project_dir(
     default=False,
     help="Run once and exit instead of continuous scheduling",
 )
+@click.option(
+    "--agent",
+    type=click.Choice(["claude-code", "opencode"], case_sensitive=False),
+    default=None,
+    help="Override the default agent (from AGF config or defaults)",
+)
+@click.option(
+    "--model-type",
+    type=click.Choice(["thinking", "standard", "light"], case_sensitive=False),
+    default=None,
+    help="Override the default model type (from AGF config or defaults)",
+)
 def main(
     tasks_file: Path,
     project_dir: Path,
@@ -323,6 +335,8 @@ def main(
     sync_interval: int,
     dry_run: bool,
     single_run: bool,
+    agent: str | None,
+    model_type: str | None,
 ) -> None:
     """Process tasks from a task list continuously or on-demand.
 
@@ -368,6 +382,8 @@ def main(
         sync_interval=sync_interval,
         dry_run=dry_run,
         single_run=single_run,
+        agent=agent,
+        model_type=model_type,
     )
 
     # Merge configurations with precedence: CLI > AGF > defaults
@@ -380,6 +396,8 @@ def main(
     log(f"Dry run: {dry_run}")
     log(f"Single run: {single_run}")
     log(f"Concurrent tasks: {effective_config.concurrent_tasks}")
+    log(f"Agent: {effective_config.agent}")
+    log(f"Model type: {effective_config.model_type}")
 
     # Initialize TaskManager
     try:
