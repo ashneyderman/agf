@@ -125,6 +125,12 @@ Execute these commands to validate the task is complete:
 
 Use the task description from the `prompt` variable.
 
-## Report
+## Output Format
 
-IMPORTANT: Exclusively return the path to the plan file created.
+IMPORTANT: Return a JSON object with this structure:
+
+```json
+{
+  "path": "specs/{agf_id}-plan-{descriptive-name}.md"
+}
+```

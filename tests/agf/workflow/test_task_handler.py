@@ -433,3 +433,148 @@ class TestWorkflowTaskHandlerIntegration:
             mock_task_manager.mark_task_error.assert_called_once()
             args = mock_task_manager.mark_task_error.call_args[0]
             assert "expected branch" in args[2].lower()
+
+
+class TestWorkflowTaskHandlerPromptWrappers:
+    """Test SDLC prompt wrapper methods."""
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_plan_success(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test successful plan execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-plan-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_plan(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-plan-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "plan"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "thinking"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_chore_success(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test successful chore execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-chore-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_chore(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-chore-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "chore"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_feature_success(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test successful feature execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-feature-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_feature(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-feature-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "feature"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "thinking"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_implement_success(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test successful implement execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="- Implemented feature X\n- Added tests\n- Updated docs\n",
+            exit_code=0,
+            duration_seconds=20.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_implement(
+            sample_worktree, sample_task, "specs/abc123-feature-test.md"
+        )
+
+        # Verify result (should be stripped)
+        assert result == "- Implemented feature X\n- Added tests\n- Updated docs"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "implement"
+        assert command_template.params == ["@specs/abc123-feature-test.md"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False

@@ -120,6 +120,12 @@ Execute these commands to validate the feature is complete:
 
 Use the feature description from the `prompt` variable.
 
-## Report
+## Output Format
 
-Return the path to the plan file created.
+IMPORTANT: Return a JSON object with this structure:
+
+```json
+{
+  "path": "specs/{agf_id}-feature-{descriptive-name}.md"
+}
+```

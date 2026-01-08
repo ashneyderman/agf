@@ -243,6 +243,99 @@ class WorkflowTaskHandler:
 
         return result
 
+    def _run_plan(self, worktree: Worktree, task: Task) -> str:
+        """Execute the plan prompt and return the plan file path.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            Path to the created plan file
+
+        Raises:
+            Exception: If agent execution fails or JSON parsing fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="plan",
+            params=[task.task_id, task.description],
+            model=ModelType.THINKING,
+            json_output=True,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.json_output["path"]
+
+    def _run_chore(self, worktree: Worktree, task: Task) -> str:
+        """Execute the chore prompt and return the chore plan file path.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            Path to the created chore plan file
+
+        Raises:
+            Exception: If agent execution fails or JSON parsing fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="chore",
+            params=[task.task_id, task.description],
+            model=ModelType.STANDARD,
+            json_output=True,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.json_output["path"]
+
+    def _run_feature(self, worktree: Worktree, task: Task) -> str:
+        """Execute the feature prompt and return the feature plan file path.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            Path to the created feature plan file
+
+        Raises:
+            Exception: If agent execution fails or JSON parsing fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="feature",
+            params=[task.task_id, task.description],
+            model=ModelType.THINKING,
+            json_output=True,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.json_output["path"]
+
+    def _run_implement(self, worktree: Worktree, task: Task, spec_path: str) -> str:
+        """Execute the implement prompt and return the implementation summary.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+            spec_path: Path to the specification/plan file to implement
+
+        Returns:
+            Summary of the implementation work completed
+
+        Raises:
+            Exception: If agent execution fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="implement",
+            params=[f"@{spec_path}"],
+            model=ModelType.STANDARD,
+            json_output=False,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.output.strip()
+
     def handle_task(self, worktree: Worktree, task: Task) -> bool:
         """Handle complete task execution workflow.
 

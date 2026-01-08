@@ -73,6 +73,12 @@ Execute these commands to validate the chore is complete:
 
 Use the chore description from the `prompt` variable.
 
-## Report
+## Output Format
 
-Return the path to the plan file created.
+IMPORTANT: Return a JSON object with this structure:
+
+```json
+{
+  "path": "specs/{agf_id}-chore-{descriptive-name}.md"
+}
+```
