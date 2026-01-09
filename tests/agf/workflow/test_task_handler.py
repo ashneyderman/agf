@@ -718,9 +718,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
-        result = handler._create_empty_commit(
-            sample_worktree, sample_task, "agf-025", "test prompt message"
-        )
+        result = handler._create_empty_commit(sample_worktree, sample_task)
 
         # Verify result
         assert result["commit_sha"] == "xyz789abc123"
@@ -733,7 +731,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         # Verify the command template
         command_template = call_args[1]["command_template"]
         assert command_template.prompt == "empty-commit"
-        assert command_template.params == ["agf-025", "test prompt message"]
+        assert command_template.params == ["abc123", "Test task description"]
         assert command_template.model == "standard"
         assert command_template.json_output is True
 
@@ -1511,10 +1509,10 @@ class TestWorkflowTaskHandlerTestingMode:
         # Verify success
         assert result is True
 
-        # Verify the agf_id passed to empty-commit is worktree_id
+        # Verify the agf_id passed to empty-commit is task_id
         call_args = mock_agent_runner.run_command.call_args
         command_template = call_args[1]["command_template"]
-        assert command_template.params == ["agf-025", "Test task description"]
+        assert command_template.params == ["abc123", "Test task description"]
 
     @patch("agf.workflow.task_handler.AgentRunner")
     @patch("agf.workflow.task_handler.mk_worktree")

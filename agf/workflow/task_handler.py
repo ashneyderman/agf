@@ -367,16 +367,12 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
-    def _create_empty_commit(
-        self, worktree: Worktree, task: Task, agf_id: str, prompt: str
-    ) -> dict:
+    def _create_empty_commit(self, worktree: Worktree, task: Task) -> dict:
         """Execute the empty-commit prompt and return commit information.
 
         Args:
             worktree: Worktree object containing worktree metadata
             task: Task object containing task metadata
-            agf_id: AGF ID for the empty commit
-            prompt: Prompt message for the empty commit
 
         Returns:
             Dictionary containing commit_sha and commit_message
@@ -387,7 +383,7 @@ class WorkflowTaskHandler:
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             prompt="empty-commit",
-            params=[agf_id, prompt],
+            params=[task.task_id, task.description],
             model=ModelType.STANDARD,
             json_output=True,
         )
@@ -445,14 +441,10 @@ class WorkflowTaskHandler:
             # Check if testing mode is enabled
             if self.config.testing:
                 self._log("Testing mode enabled - creating empty commit only")
-                # Get agf_id from worktree_id or fall back to task_id
-                agf_id = worktree.worktree_id or task.task_id
 
                 # Create empty commit
                 try:
-                    commit_info = self._create_empty_commit(
-                        worktree, task, agf_id, task.description
-                    )
+                    commit_info = self._create_empty_commit(worktree, task)
                     commit_sha = commit_info.get("commit_sha")
                 except Exception as e:
                     raise Exception(f"Empty commit failed: {str(e)}") from e
