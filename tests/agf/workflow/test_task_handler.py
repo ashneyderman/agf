@@ -690,6 +690,52 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_empty_commit_success(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful empty commit creation."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "xyz789abc123",
+                "commit_message": "add prompt wrapper function that calls... (task: agf-025)",
+            },
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_empty_commit(
+            sample_worktree, sample_task, "agf-025", "test prompt message"
+        )
+
+        # Verify result
+        assert result["commit_sha"] == "xyz789abc123"
+        assert result["commit_message"] == "add prompt wrapper function that calls... (task: agf-025)"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "empty-commit"
+        assert command_template.params == ["agf-025", "test prompt message"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_plan_fallback_to_task_id(
         self,
         mock_agent_runner,

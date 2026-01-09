@@ -364,6 +364,31 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
+    def _create_empty_commit(self, worktree: Worktree, task: Task, agf_id: str, prompt: str) -> dict:
+        """Execute the empty-commit prompt and return commit information.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+            agf_id: AGF ID for the empty commit
+            prompt: Prompt message for the empty commit
+
+        Returns:
+            Dictionary containing commit_sha and commit_message
+
+        Raises:
+            Exception: If agent execution fails or JSON parsing fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="empty-commit",
+            params=[agf_id, prompt],
+            model=ModelType.STANDARD,
+            json_output=True,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.json_output
+
     def _get_task_type(self, task: Task) -> str:
         """Detect the task type from task tags.
 
