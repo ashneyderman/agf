@@ -43,6 +43,7 @@ def mock_config():
         sync_interval=30,
         dry_run=False,
         single_run=False,
+        testing=False,
         agent=agf_config.agent,
         model_type=agf_config.model_type,
         branch_prefix=None,
@@ -146,6 +147,7 @@ class TestWorkflowTaskHandlerHelpers:
             sync_interval=30,
             dry_run=False,
             single_run=False,
+            testing=False,
             agent=agf_config.agent,
             model_type=agf_config.model_type,
             branch_prefix="my-team",
@@ -1346,3 +1348,242 @@ class TestWorkflowTaskHandlerSDLCFlow:
         mock_task_manager.mark_task_error.assert_called_once()
         args = mock_task_manager.mark_task_error.call_args[0]
         assert "commit phase failed" in args[2].lower()
+
+
+class TestWorkflowTaskHandlerTestingMode:
+    """Test testing mode functionality in WorkflowTaskHandler."""
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_testing_mode_success(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful task handling in testing mode."""
+        # Create config with testing=True
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                )
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"),
+            project_dir=Path("/tmp/project"),
+            testing=True,
+        )
+        config_with_testing = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=True,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+        )
+
+        handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
+
+        # Mock successful empty commit execution
+        empty_commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "test123abc",
+                "commit_message": "test commit (task: abc123)",
+            },
+        )
+        mock_agent_runner.run_command.return_value = empty_commit_result
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify AgentRunner was called exactly once with empty-commit prompt
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "empty-commit"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is True
+
+        # Verify status updates
+        assert mock_task_manager.update_task_status.call_count == 2
+        # First call: IN_PROGRESS
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "abc123", TaskStatus.IN_PROGRESS
+        )
+        # Second call: COMPLETED with commit SHA
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "abc123", TaskStatus.COMPLETED, commit_sha="test123abc"
+        )
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_testing_mode_uses_worktree_id(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test testing mode uses worktree_id when available."""
+        # Create config with testing=True
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                )
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"),
+            project_dir=Path("/tmp/project"),
+            testing=True,
+        )
+        config_with_testing = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=True,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+        )
+
+        handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(
+            worktree_name="test-feature", worktree_id="agf-025"
+        )
+
+        # Mock successful empty commit execution
+        empty_commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "test456def",
+                "commit_message": "test commit (task: agf-025)",
+            },
+        )
+        mock_agent_runner.run_command.return_value = empty_commit_result
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(worktree_with_id, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify the agf_id passed to empty-commit is worktree_id
+        call_args = mock_agent_runner.run_command.call_args
+        command_template = call_args[1]["command_template"]
+        assert command_template.params == ["agf-025", "Test task description"]
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_testing_mode_fallback_to_task_id(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test testing mode falls back to task_id when worktree_id is None."""
+        # Create config with testing=True
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                )
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"),
+            project_dir=Path("/tmp/project"),
+            testing=True,
+        )
+        config_with_testing = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=True,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+        )
+
+        handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
+
+        # Mock successful empty commit execution
+        empty_commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "test789ghi",
+                "commit_message": "test commit (task: abc123)",
+            },
+        )
+        mock_agent_runner.run_command.return_value = empty_commit_result
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify the agf_id falls back to task_id
+        call_args = mock_agent_runner.run_command.call_args
+        command_template = call_args[1]["command_template"]
+        assert command_template.params == ["abc123", "Test task description"]

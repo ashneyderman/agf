@@ -334,6 +334,12 @@ def validate_project_dir(
     default=None,
     help="Override the branch name prefix (default: uses USER environment variable)",
 )
+@click.option(
+    "--testing",
+    is_flag=True,
+    default=False,
+    help="Run in testing mode (skip SDLC phases, only create empty commits)",
+)
 def main(
     tasks_file: Path,
     project_dir: Path,
@@ -344,6 +350,7 @@ def main(
     agent: str | None,
     model_type: str | None,
     branch_prefix: str | None,
+    testing: bool,
 ) -> None:
     """Process tasks from a task list continuously or on-demand.
 
@@ -392,6 +399,7 @@ def main(
         agent=agent,
         model_type=model_type,
         branch_prefix=branch_prefix,
+        testing=testing,
     )
 
     # Merge configurations with precedence: CLI > AGF > defaults
@@ -403,6 +411,7 @@ def main(
     log(f"Sync interval: {sync_interval}s")
     log(f"Dry run: {dry_run}")
     log(f"Single run: {single_run}")
+    log(f"Testing mode: {testing}")
     log(f"Concurrent tasks: {effective_config.concurrent_tasks}")
     log(f"Agent: {effective_config.agent}")
     log(f"Model type: {effective_config.model_type}")

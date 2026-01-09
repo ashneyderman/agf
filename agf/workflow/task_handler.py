@@ -411,10 +411,11 @@ class WorkflowTaskHandler:
         This method orchestrates the entire task execution process:
         1. Initialize or validate worktree
         2. Update task status to IN_PROGRESS
-        3. Detect task type and run planning phase (plan/chore/feature)
-        4. Run implementation phase
-        5. Run commit phase
-        6. Update task status to COMPLETED with commit SHA
+        3. If testing mode: create empty commit and return
+        4. Otherwise: Detect task type and run planning phase (plan/chore/feature)
+        5. Run implementation phase
+        6. Run commit phase
+        7. Update task status to COMPLETED with commit SHA
 
         Args:
             worktree: Worktree object containing worktree metadata
@@ -435,6 +436,29 @@ class WorkflowTaskHandler:
             self.task_manager.update_task_status(
                 worktree.worktree_name, task.task_id, TaskStatus.IN_PROGRESS
             )
+
+            # Check if testing mode is enabled
+            if self.config.testing:
+                self._log("Testing mode enabled - creating empty commit only")
+                # Get agf_id from worktree_id or fall back to task_id
+                agf_id = worktree.worktree_id or task.task_id
+
+                # Create empty commit
+                try:
+                    commit_info = self._create_empty_commit(worktree, task, agf_id, task.description)
+                    commit_sha = commit_info.get("commit_sha")
+                except Exception as e:
+                    raise Exception(f"Empty commit failed: {str(e)}") from e
+
+                # Update task status to COMPLETED
+                self.task_manager.update_task_status(
+                    worktree.worktree_name,
+                    task.task_id,
+                    TaskStatus.COMPLETED,
+                    commit_sha=commit_sha,
+                )
+                self._log(f"Task {task.task_id} completed in testing mode")
+                return True
 
             # Detect task type
             task_type = self._get_task_type(task)
