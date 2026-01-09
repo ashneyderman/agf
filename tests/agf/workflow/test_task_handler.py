@@ -1096,7 +1096,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         )
 
         # Set up mock to return different results for each call
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             plan_result,
             implement_result,
             commit_result,
@@ -1110,7 +1110,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         assert result is True
 
         # Verify agent was called 3 times (plan, implement, commit)
-        assert mock_agent_runner.run_prompt.call_count == 3
+        assert mock_agent_runner.run_command.call_count == 3
 
         # Verify task completed successfully
         mock_task_manager.update_task_status.assert_any_call(
