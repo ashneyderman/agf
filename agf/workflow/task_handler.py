@@ -360,20 +360,21 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
-    def _get_task_type(self, task: Task) -> str | None:
+    def _get_task_type(self, task: Task) -> str:
         """Detect the task type from task tags.
 
         Args:
             task: Task object containing tags
 
         Returns:
-            Task type string ("chore", "feature", or "plan") or None if not found
+            Task type string ("chore", "feature", or "plan").
+            Defaults to "plan" if no valid task type tag is found.
         """
         valid_types = ["chore", "feature", "plan"]
         for tag in task.tags:
             if tag in valid_types:
                 return tag
-        return None
+        return "plan"
 
     def handle_task(self, worktree: Worktree, task: Task) -> bool:
         """Handle complete task execution workflow with SDLC phases.
@@ -408,16 +409,6 @@ class WorkflowTaskHandler:
 
             # Detect task type
             task_type = self._get_task_type(task)
-            if not task_type:
-                error_msg = "Task type not found in tags. Valid task types: chore, feature, plan"
-                self._log(f"Task {task.task_id} failed: {error_msg}")
-                self.task_manager.update_task_status(
-                    worktree.worktree_name, task.task_id, TaskStatus.FAILED
-                )
-                self.task_manager.mark_task_error(
-                    worktree.worktree_name, task.task_id, error_msg
-                )
-                return False
 
             # Phase 1: Planning (run appropriate planning method based on task type)
             try:
