@@ -102,7 +102,11 @@ class WorkflowTaskHandler:
             Branch name in the format: {prefix}/{worktree_id}-{worktree_name}
             or {prefix}/{worktree_name} if worktree_id is None
         """
-        prefix = self.config.branch_prefix if self.config.branch_prefix else self._get_username()
+        prefix = (
+            self.config.branch_prefix
+            if self.config.branch_prefix
+            else self._get_username()
+        )
         if worktree.worktree_id is not None:
             return f"{prefix}/{worktree.worktree_id}-{worktree.worktree_name}"
         return f"{prefix}/{worktree.worktree_name}"
@@ -229,8 +233,7 @@ class WorkflowTaskHandler:
 
         # Create agent configuration
         agent_cfg = AgentConfig(
-            working_dir=worktree_path,
-            skip_permissions=True,
+            working_dir=worktree_path, skip_permissions=True, logger=self._log
         )
 
         # Execute agent
@@ -364,7 +367,9 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
-    def _create_empty_commit(self, worktree: Worktree, task: Task, agf_id: str, prompt: str) -> dict:
+    def _create_empty_commit(
+        self, worktree: Worktree, task: Task, agf_id: str, prompt: str
+    ) -> dict:
         """Execute the empty-commit prompt and return commit information.
 
         Args:
@@ -445,7 +450,9 @@ class WorkflowTaskHandler:
 
                 # Create empty commit
                 try:
-                    commit_info = self._create_empty_commit(worktree, task, agf_id, task.description)
+                    commit_info = self._create_empty_commit(
+                        worktree, task, agf_id, task.description
+                    )
                     commit_sha = commit_info.get("commit_sha")
                 except Exception as e:
                     raise Exception(f"Empty commit failed: {str(e)}") from e
