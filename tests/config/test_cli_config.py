@@ -163,3 +163,25 @@ def test_cli_config_string_paths_converted(tmp_path):
     assert isinstance(config.project_dir, Path)
     assert config.tasks_file == tasks_file
     assert config.project_dir == tmp_path
+
+
+def test_cli_config_branch_prefix_default(tmp_path):
+    """Test that branch_prefix defaults to None."""
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.touch()
+
+    config = CLIConfig(tasks_file=tasks_file, project_dir=tmp_path)
+
+    assert config.branch_prefix is None
+
+
+def test_cli_config_branch_prefix_custom_value(tmp_path):
+    """Test that custom branch_prefix value is preserved."""
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.touch()
+
+    config = CLIConfig(
+        tasks_file=tasks_file, project_dir=tmp_path, branch_prefix="custom-prefix"
+    )
+
+    assert config.branch_prefix == "custom-prefix"

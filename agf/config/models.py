@@ -55,6 +55,7 @@ class AGFConfig(BaseModel):
         concurrent_tasks: Maximum number of concurrent tasks (default: 5)
         agent: Default agent to use (default: "claude-code")
         model_type: Default model type (default: "standard")
+        branch_prefix: Branch name prefix for git worktrees (default: None, uses USER env var)
         agents: Dictionary mapping agent names to their model configurations
 
     Example:
@@ -89,6 +90,7 @@ class AGFConfig(BaseModel):
     concurrent_tasks: int = Field(default=5, alias="concurrent-tasks")
     agent: str = "claude-code"
     model_type: str = Field(default="standard", alias="model-type")
+    branch_prefix: str | None = Field(default=None, alias="branch-prefix")
     agents: dict[str, AgentModelConfig] = Field(default_factory=dict)
 
     @field_validator("concurrent_tasks")
@@ -112,6 +114,7 @@ class AGFConfig(BaseModel):
             concurrent_tasks=5,
             agent="claude-code",
             model_type="standard",
+            branch_prefix=None,
             agents={
                 "claude-code": AgentModelConfig(
                     thinking="opus", standard="sonnet", light="haiku"
@@ -141,6 +144,7 @@ class CLIConfig(BaseModel):
         single_run: Run once and exit flag (default: False)
         agent: Agent override (None means use AGF config, default: None)
         model_type: Model type override (None means use AGF config, default: None)
+        branch_prefix: Branch prefix override (None means use AGF config, default: None)
 
     Example:
         ```python
@@ -161,6 +165,7 @@ class CLIConfig(BaseModel):
     single_run: bool = False
     agent: str | None = None
     model_type: str | None = None
+    branch_prefix: str | None = None
 
     @field_validator("sync_interval")
     @classmethod
@@ -193,6 +198,7 @@ class EffectiveConfig(BaseModel):
     Resolved fields (after applying precedence):
         agent: Final agent to use (CLI override or AGF config)
         model_type: Final model type to use (CLI override or AGF config)
+        branch_prefix: Final branch prefix to use (CLI override or AGF config)
 
     Example:
         ```python
@@ -226,3 +232,4 @@ class EffectiveConfig(BaseModel):
     # Resolved values (after precedence)
     agent: str
     model_type: str
+    branch_prefix: str | None

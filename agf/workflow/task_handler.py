@@ -88,20 +88,24 @@ class WorkflowTaskHandler:
         """Construct the branch name for the worktree.
 
         Uses the convention:
-        - {username}/{worktree_id}-{worktree_name} when worktree_id is not None
-        - {username}/{worktree_name} when worktree_id is None
+        - {prefix}/{worktree_id}-{worktree_name} when worktree_id is not None
+        - {prefix}/{worktree_name} when worktree_id is None
+
+        The prefix is determined by:
+        - config.branch_prefix if set
+        - USER environment variable if branch_prefix is None
 
         Args:
             worktree: Worktree object containing the worktree name and optional worktree_id
 
         Returns:
-            Branch name in the format: {username}/{worktree_id}-{worktree_name}
-            or {username}/{worktree_name} if worktree_id is None
+            Branch name in the format: {prefix}/{worktree_id}-{worktree_name}
+            or {prefix}/{worktree_name} if worktree_id is None
         """
-        username = self._get_username()
+        prefix = self.config.branch_prefix if self.config.branch_prefix else self._get_username()
         if worktree.worktree_id is not None:
-            return f"{username}/{worktree.worktree_id}-{worktree.worktree_name}"
-        return f"{username}/{worktree.worktree_name}"
+            return f"{prefix}/{worktree.worktree_id}-{worktree.worktree_name}"
+        return f"{prefix}/{worktree.worktree_name}"
 
     def _has_uncommitted_changes(self, worktree_path: str) -> bool:
         """Check if the worktree has uncommitted changes.

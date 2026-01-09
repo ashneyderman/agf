@@ -146,6 +146,11 @@ def merge_configs(agf_config: AGFConfig, cli_config: CLIConfig) -> EffectiveConf
         cli_config.model_type if cli_config.model_type is not None else agf_config.model_type
     )
 
+    # Apply precedence for branch_prefix: CLI > AGF config
+    resolved_branch_prefix = (
+        cli_config.branch_prefix if cli_config.branch_prefix is not None else agf_config.branch_prefix
+    )
+
     return EffectiveConfig(
         # From AGFConfig
         worktrees=agf_config.worktrees,
@@ -161,4 +166,5 @@ def merge_configs(agf_config: AGFConfig, cli_config: CLIConfig) -> EffectiveConf
         # Resolved values
         agent=resolved_agent,
         model_type=resolved_model_type,
+        branch_prefix=resolved_branch_prefix,
     )

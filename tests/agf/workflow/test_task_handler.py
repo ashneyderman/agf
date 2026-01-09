@@ -45,6 +45,7 @@ def mock_config():
         single_run=False,
         agent=agf_config.agent,
         model_type=agf_config.model_type,
+        branch_prefix=None,
     )
 
 
@@ -116,6 +117,52 @@ class TestWorkflowTaskHandlerHelpers:
         with patch.dict(os.environ, {"USER": "alex"}):
             branch = handler._get_branch_name(worktree_with_id)
             assert branch == "alex/SCHIP-7899-test-feature"
+
+    def test_get_branch_name_with_custom_prefix(self, mock_task_manager, sample_worktree):
+        """Test branch name construction with custom branch_prefix."""
+        # Create config with custom branch_prefix
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            branch_prefix="my-team",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                )
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config_with_prefix = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix="my-team",
+        )
+
+        handler = WorkflowTaskHandler(config_with_prefix, mock_task_manager)
+
+        branch = handler._get_branch_name(sample_worktree)
+        assert branch == "my-team/test-feature"
+
+    def test_get_branch_name_fallback_to_user(self, mock_config, mock_task_manager, sample_worktree):
+        """Test branch name falls back to USER when branch_prefix is None."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        with patch.dict(os.environ, {"USER": "alex"}):
+            branch = handler._get_branch_name(sample_worktree)
+            assert branch == "alex/test-feature"
 
 
 class TestWorkflowTaskHandlerWorktree:
@@ -516,7 +563,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["agf-020", "Test task description"]
-        assert command_template.model == "standard"
+        assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
@@ -719,7 +766,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["abc123", "Test task description"]
-        assert command_template.model == "standard"
+        assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
