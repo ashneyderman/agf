@@ -15,7 +15,7 @@ Unify prompt processing across all available command prompts by creating a singl
 
 Create a unified prompt processing interface that:
 1. Introduces a `CommandTemplate` model in `agf/agent/models.py` with standard fields for all prompt executions
-2. Refactors the Agent protocol to use `run_prompt(prompt_template: CommandTemplate)` instead of `run(prompt: str, config: AgentConfig)`
+2. Refactors the Agent protocol to use `run_command(prompt_template: CommandTemplate)` instead of `run(prompt: str, config: AgentConfig)`
 3. Updates both ClaudeCodeAgent and OpenCodeAgent implementations to use the new interface
 4. Maintains backward compatibility where needed during the transition
 
@@ -34,10 +34,10 @@ Introduce a CommandTemplate model that encapsulates all prompt-related configura
 
 ## Relevant Files
 
-- **agf/agent/base.py** - Contains Agent protocol, AgentConfig, AgentResult, and ModelType enum. Need to update Agent protocol to define run_prompt method.
-- **agf/agent/claude_code.py** - ClaudeCodeAgent implementation. Need to rename run to run_prompt and adapt to use CommandTemplate.
-- **agf/agent/opencode.py** - OpenCodeAgent implementation. Need to rename run to run_prompt and adapt to use CommandTemplate.
-- **agf/agent/runner.py** - AgentRunner that executes agents. May need to update to support the new run_prompt interface.
+- **agf/agent/base.py** - Contains Agent protocol, AgentConfig, AgentResult, and ModelType enum. Need to update Agent protocol to define run_command method.
+- **agf/agent/claude_code.py** - ClaudeCodeAgent implementation. Need to rename run to run_command and adapt to use CommandTemplate.
+- **agf/agent/opencode.py** - OpenCodeAgent implementation. Need to rename run to run_command and adapt to use CommandTemplate.
+- **agf/agent/runner.py** - AgentRunner that executes agents. May need to update to support the new run_command interface.
 
 ### New Files
 
@@ -49,20 +49,20 @@ Introduce a CommandTemplate model that encapsulates all prompt-related configura
 
 Create the CommandTemplate model and update the Agent protocol:
 - Create agf/agent/models.py with CommandTemplate class
-- Update Agent protocol in base.py to add run_prompt method signature
+- Update Agent protocol in base.py to add run_command method signature
 - Import CommandTemplate in relevant modules
 
 ### Phase 2: Core Implementation
 
 Update agent implementations to use CommandTemplate:
-- Implement run_prompt in ClaudeCodeAgent
-- Implement run_prompt in OpenCodeAgent
+- Implement run_command in ClaudeCodeAgent
+- Implement run_command in OpenCodeAgent
 - Ensure both implementations properly extract prompt text, model type, and json_output from the template
 
 ### Phase 3: Integration & Cleanup
 
 Ensure the new interface works correctly:
-- Update AgentRunner if needed to support run_prompt
+- Update AgentRunner if needed to support run_command
 - Validate that existing functionality continues to work
 - Consider deprecation path for the old run method
 
@@ -83,24 +83,24 @@ Ensure the new interface works correctly:
 ### 2. Update Agent protocol
 
 - In agf/agent/base.py, import CommandTemplate from agf.agent.models
-- Add new method signature to Agent protocol: `run_prompt(self, prompt_template: CommandTemplate, config: AgentConfig | None = None) -> AgentResult`
-- Add docstring for run_prompt explaining it replaces the run method
+- Add new method signature to Agent protocol: `run_command(self, prompt_template: CommandTemplate, config: AgentConfig | None = None) -> AgentResult`
+- Add docstring for run_command explaining it replaces the run method
 - Keep the existing run method in the protocol for now to maintain backward compatibility
 
-### 3. Implement run_prompt in ClaudeCodeAgent
+### 3. Implement run_command in ClaudeCodeAgent
 
 - In agf/agent/claude_code.py, import CommandTemplate from agf.agent.models
-- Add run_prompt method to ClaudeCodeAgent class
+- Add run_command method to ClaudeCodeAgent class
 - Extract prompt text from prompt_template.prompt
 - If prompt_template.model is not None, merge it into config (create new config if needed)
 - If prompt_template.json_output is True, ensure config.json_output is set
 - Call the internal _build_command and execution logic with the extracted values
 - Return AgentResult as before
 
-### 4. Implement run_prompt in OpenCodeAgent
+### 4. Implement run_command in OpenCodeAgent
 
 - In agf/agent/opencode.py, import CommandTemplate from agf.agent.models
-- Add run_prompt method to OpenCodeAgent class
+- Add run_command method to OpenCodeAgent class
 - Extract prompt text from prompt_template.prompt
 - If prompt_template.model is not None, merge it into config (create new config if needed)
 - If prompt_template.json_output is True, ensure config.json_output is set
@@ -117,8 +117,8 @@ Ensure the new interface works correctly:
 
 - Run all existing tests to ensure no regressions: `uv run python -m pytest tests/agent/ -v`
 - Test CommandTemplate creation with various field combinations
-- Verify that run_prompt correctly extracts and uses model type from template
-- Verify that run_prompt correctly sets json_output from template
+- Verify that run_command correctly extracts and uses model type from template
+- Verify that run_command correctly sets json_output from template
 - Ensure both agents work with the new interface
 
 ## Testing Strategy
@@ -127,10 +127,10 @@ Ensure the new interface works correctly:
 - Test CommandTemplate model creation with various field combinations
 - Test CommandTemplate with default values (namespace="agf", params=None, json_output=False, model=None)
 - Test CommandTemplate with custom values for all fields
-- Test ClaudeCodeAgent.run_prompt extracts prompt correctly
-- Test ClaudeCodeAgent.run_prompt merges model from template into config
-- Test ClaudeCodeAgent.run_prompt sets json_output from template
-- Test OpenCodeAgent.run_prompt with same scenarios as ClaudeCodeAgent
+- Test ClaudeCodeAgent.run_command extracts prompt correctly
+- Test ClaudeCodeAgent.run_command merges model from template into config
+- Test ClaudeCodeAgent.run_command sets json_output from template
+- Test OpenCodeAgent.run_command with same scenarios as ClaudeCodeAgent
 - Test backward compatibility of existing run method if maintained
 
 **Edge Cases:**
@@ -138,15 +138,15 @@ Ensure the new interface works correctly:
 - CommandTemplate with model=None (should use config default or agent default)
 - CommandTemplate with json_output=True but config.json_output=False (template should take precedence)
 - CommandTemplate with params containing various data types
-- Concurrent calls to run_prompt with different templates
+- Concurrent calls to run_command with different templates
 
 ## Acceptance Criteria
 
 1. agf/agent/models.py exists and contains CommandTemplate class
 2. CommandTemplate has all required fields: namespace (default "agf"), prompt (required), params (default None), json_output (default False), model (default None)
-3. Agent protocol defines run_prompt method accepting CommandTemplate
-4. ClaudeCodeAgent implements run_prompt and correctly uses all CommandTemplate fields
-5. OpenCodeAgent implements run_prompt and correctly uses all CommandTemplate fields
+3. Agent protocol defines run_command method accepting CommandTemplate
+4. ClaudeCodeAgent implements run_command and correctly uses all CommandTemplate fields
+5. OpenCodeAgent implements run_command and correctly uses all CommandTemplate fields
 6. Model type from CommandTemplate is properly passed to AgentConfig
 7. JSON output flag from CommandTemplate is properly passed to AgentConfig
 8. All existing tests pass without modification

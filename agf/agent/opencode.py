@@ -90,12 +90,12 @@ class OpenCodeAgent:
 
         return agent_result
 
-    def run_prompt(
+    def run_command(
         self, prompt_template: CommandTemplate, config: AgentConfig | None = None
     ) -> AgentResult:
         """Execute OpenCode with a structured prompt template.
 
-        This method provides a unified interface for prompt execution, merging
+        This method provides a unified interface for command execution, merging
         template-level configuration (model, json_output) with execution-level
         configuration (timeout, working directory, etc.).
 

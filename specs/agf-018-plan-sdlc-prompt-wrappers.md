@@ -140,18 +140,18 @@ IMPORTANT: Execute every step in order, top to bottom.
 
 - In tests/agf/workflow/test_task_handler.py, create new test class `TestWorkflowTaskHandlerPromptWrappers`
 - Add test method `test_run_plan_success` that:
-  - Mocks AgentRunner.run_prompt to return successful result with plan file path
+  - Mocks AgentRunner.run_command to return successful result with plan file path
   - Calls handler._run_plan with test parameters
   - Asserts the correct plan file path is returned
   - Verifies CommandTemplate was constructed correctly
 - Add test method `test_run_plan_failure` that:
-  - Mocks AgentRunner.run_prompt to return failed result
+  - Mocks AgentRunner.run_command to return failed result
   - Verifies appropriate error handling
 
 ### 6. Add unit tests for _run_chore
 
 - Add test method `test_run_chore_success` that:
-  - Mocks AgentRunner.run_prompt to return successful result with chore plan file path
+  - Mocks AgentRunner.run_command to return successful result with chore plan file path
   - Calls handler._run_chore with test parameters
   - Asserts the correct chore plan file path is returned
   - Verifies CommandTemplate was constructed with prompt="chore"
@@ -160,7 +160,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 ### 7. Add unit tests for _run_feature
 
 - Add test method `test_run_feature_success` that:
-  - Mocks AgentRunner.run_prompt to return successful result with feature plan file path
+  - Mocks AgentRunner.run_command to return successful result with feature plan file path
   - Calls handler._run_feature with test parameters
   - Asserts the correct feature plan file path is returned
   - Verifies CommandTemplate was constructed with prompt="feature" and model=ModelType.THINKING
@@ -169,7 +169,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 ### 8. Add unit tests for _run_implement
 
 - Add test method `test_run_implement_success` that:
-  - Mocks AgentRunner.run_prompt to return successful result with implementation summary
+  - Mocks AgentRunner.run_command to return successful result with implementation summary
   - Calls handler._run_implement with test plan content
   - Asserts the correct summary is returned
   - Verifies CommandTemplate was constructed with prompt="implement"
@@ -187,7 +187,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 ### Unit Tests
 
 Each wrapper function will have dedicated unit tests that:
-1. Mock the AgentRunner.run_prompt method to avoid actual agent execution
+1. Mock the AgentRunner.run_command method to avoid actual agent execution
 2. Verify correct CommandTemplate construction (prompt name, params, model type)
 3. Test successful execution path with expected return values
 4. Test error handling when agent execution fails

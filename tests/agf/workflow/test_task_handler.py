@@ -282,7 +282,7 @@ class TestWorkflowTaskHandlerIntegration:
             agent_name="claude-code",
             json_output={"commit_sha": "abc123def456"},
         )
-        mock_agent_runner.run_prompt.side_effect = [feature_result, implement_result, commit_result]
+        mock_agent_runner.run_command.side_effect = [feature_result, implement_result, commit_result]
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -323,7 +323,7 @@ class TestWorkflowTaskHandlerIntegration:
         sample_task.tags = ["feature"]
 
         # Mock failed agent execution during planning phase
-        mock_agent_runner.run_prompt.side_effect = Exception("Agent encountered an error")
+        mock_agent_runner.run_command.side_effect = Exception("Agent encountered an error")
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -462,7 +462,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/agf-020-plan-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
         result = handler._run_plan(worktree_with_id, sample_task)
@@ -471,8 +471,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/agf-020-plan-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
@@ -500,7 +500,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/agf-020-chore-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
         result = handler._run_chore(worktree_with_id, sample_task)
@@ -509,8 +509,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/agf-020-chore-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
@@ -538,7 +538,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/agf-020-feature-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
         result = handler._run_feature(worktree_with_id, sample_task)
@@ -547,8 +547,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/agf-020-feature-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
@@ -577,7 +577,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             duration_seconds=20.0,
             agent_name="claude-code",
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
         result = handler._run_implement(
@@ -588,8 +588,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "- Implemented feature X\n- Added tests\n- Updated docs"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template
         command_template = call_args[1]["prompt_template"]
@@ -622,7 +622,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
                 "commit_message": "feat: implement test feature",
             },
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper
         result = handler._create_commit(sample_worktree, sample_task)
@@ -632,8 +632,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result["commit_message"] == "feat: implement test feature"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template
         command_template = call_args[1]["prompt_template"]
@@ -663,7 +663,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/abc123-plan-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper with worktree that has no worktree_id
         result = handler._run_plan(sample_worktree, sample_task)
@@ -672,8 +672,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/abc123-plan-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
         command_template = call_args[1]["prompt_template"]
@@ -703,7 +703,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/abc123-chore-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper with worktree that has no worktree_id
         result = handler._run_chore(sample_worktree, sample_task)
@@ -712,8 +712,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/abc123-chore-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
         command_template = call_args[1]["prompt_template"]
@@ -743,7 +743,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
             agent_name="claude-code",
             json_output={"path": "specs/abc123-feature-test-task.md"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_command.return_value = mock_result
 
         # Call the wrapper with worktree that has no worktree_id
         result = handler._run_feature(sample_worktree, sample_task)
@@ -752,8 +752,8 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert result == "specs/abc123-feature-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
-        mock_agent_runner.run_prompt.assert_called_once()
-        call_args = mock_agent_runner.run_prompt.call_args
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
         command_template = call_args[1]["prompt_template"]
@@ -880,7 +880,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         )
 
         # Set up mock to return different results for each call
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             feature_result,
             implement_result,
             commit_result,
@@ -894,7 +894,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         assert result is True
 
         # Verify agent was called 3 times (feature, implement, commit)
-        assert mock_agent_runner.run_prompt.call_count == 3
+        assert mock_agent_runner.run_command.call_count == 3
 
         # Verify task status updates
         assert mock_task_manager.update_task_status.call_count == 2
@@ -956,7 +956,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         )
 
         # Set up mock to return different results for each call
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             chore_result,
             implement_result,
             commit_result,
@@ -970,7 +970,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         assert result is True
 
         # Verify agent was called 3 times (chore, implement, commit)
-        assert mock_agent_runner.run_prompt.call_count == 3
+        assert mock_agent_runner.run_command.call_count == 3
 
         # Verify task completed
         mock_task_manager.update_task_status.assert_any_call(
@@ -1026,7 +1026,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         )
 
         # Set up mock to return different results for each call
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             plan_result,
             implement_result,
             commit_result,
@@ -1040,7 +1040,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         assert result is True
 
         # Verify agent was called 3 times (plan, implement, commit)
-        assert mock_agent_runner.run_prompt.call_count == 3
+        assert mock_agent_runner.run_command.call_count == 3
 
         # Verify task completed
         mock_task_manager.update_task_status.assert_any_call(
@@ -1103,7 +1103,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
         )
 
         # Mock planning phase to raise an exception
-        mock_agent_runner.run_prompt.side_effect = Exception("Planning failed")
+        mock_agent_runner.run_command.side_effect = Exception("Planning failed")
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -1147,7 +1147,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
             json_output={"path": "specs/feat03-search.md"},
         )
 
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             feature_result,
             Exception("Implementation failed"),
         ]
@@ -1201,7 +1201,7 @@ class TestWorkflowTaskHandlerSDLCFlow:
             agent_name="claude-code",
         )
 
-        mock_agent_runner.run_prompt.side_effect = [
+        mock_agent_runner.run_command.side_effect = [
             feature_result,
             implement_result,
             Exception("Commit failed"),

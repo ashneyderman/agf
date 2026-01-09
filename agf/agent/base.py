@@ -199,16 +199,16 @@ class Agent(Protocol):
     def run(self, prompt: str, config: AgentConfig | None = None) -> AgentResult:
         """Execute the agent with the given prompt and configuration.
 
-        Deprecated: Use run_prompt() instead for structured prompt execution.
+        Deprecated: Use run_command() instead for structured prompt execution.
         """
         ...
 
-    def run_prompt(
+    def run_command(
         self, prompt_template: "CommandTemplate", config: AgentConfig | None = None
     ) -> AgentResult:
         """Execute the agent with a structured prompt template.
 
-        This method provides a unified interface for prompt execution, supporting
+        This method provides a unified interface for command execution, supporting
         namespace organization, parameter templating, JSON output extraction,
         and per-prompt model selection.
 

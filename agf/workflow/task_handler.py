@@ -231,7 +231,7 @@ class WorkflowTaskHandler:
 
         # Execute agent
         self._log(f"Running agent command {self.config.agent} with model {model}")
-        result = AgentRunner.run_prompt(
+        result = AgentRunner.run_command(
             agent_name=self.config.agent,
             prompt_template=command_template,
             config=agent_cfg,

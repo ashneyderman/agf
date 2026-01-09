@@ -45,13 +45,13 @@ class AgentRunner:
     ) -> AgentResult:
         """Run an agent by name with the given prompt.
 
-        Deprecated: Use run_prompt() for structured prompt execution.
+        Deprecated: Use run_command() for structured prompt execution.
         """
         agent = cls.get_agent(agent_name)
         return agent.run(prompt, config)
 
     @classmethod
-    def run_prompt(
+    def run_command(
         cls,
         agent_name: str,
         prompt_template: CommandTemplate,
@@ -59,7 +59,7 @@ class AgentRunner:
     ) -> AgentResult:
         """Run an agent by name with a structured prompt template.
 
-        This method provides a unified interface for prompt execution, supporting
+        This method provides a unified interface for command execution, supporting
         namespace organization, parameter templating, JSON output extraction,
         and per-prompt model selection.
 
@@ -75,7 +75,7 @@ class AgentRunner:
             AgentError: If the agent name is not registered
         """
         agent = cls.get_agent(agent_name)
-        return agent.run_prompt(prompt_template, config)
+        return agent.run_command(prompt_template, config)
 
 
 # Pre-register built-in agents
