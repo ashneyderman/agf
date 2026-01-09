@@ -227,7 +227,6 @@ class WorkflowTaskHandler:
         agent_cfg = AgentConfig(
             working_dir=worktree_path,
             skip_permissions=True,
-            max_turns=5,
         )
 
         # Execute agent
@@ -240,6 +239,8 @@ class WorkflowTaskHandler:
         self._log(
             f"Agent execution completed: success={result.success}, exit_code={result.exit_code}"
         )
+        self._log(f"output={result.output}")
+        self._log(f"json_output={result.json_output}")
 
         return result
 
