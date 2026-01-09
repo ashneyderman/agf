@@ -516,7 +516,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["agf-020", "Test task description"]
-        assert command_template.model == "standard"
+        assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
@@ -719,7 +719,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["abc123", "Test task description"]
-        assert command_template.model == "standard"
+        assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
