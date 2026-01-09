@@ -145,6 +145,7 @@ class CLIConfig(BaseModel):
         agent: Agent override (None means use AGF config, default: None)
         model_type: Model type override (None means use AGF config, default: None)
         branch_prefix: Branch prefix override (None means use AGF config, default: None)
+        testing: Testing mode flag - skip SDLC phases, only create empty commits (default: False)
 
     Example:
         ```python
@@ -166,6 +167,7 @@ class CLIConfig(BaseModel):
     agent: str | None = None
     model_type: str | None = None
     branch_prefix: str | None = None
+    testing: bool = False
 
     @field_validator("sync_interval")
     @classmethod
@@ -194,6 +196,7 @@ class EffectiveConfig(BaseModel):
         sync_interval: Interval in seconds between task discovery runs
         dry_run: Read-only mode flag
         single_run: Run once and exit flag
+        testing: Testing mode flag - skip SDLC phases, only create empty commits
 
     Resolved fields (after applying precedence):
         agent: Final agent to use (CLI override or AGF config)
@@ -228,6 +231,7 @@ class EffectiveConfig(BaseModel):
     sync_interval: int
     dry_run: bool
     single_run: bool
+    testing: bool
 
     # Resolved values (after precedence)
     agent: str

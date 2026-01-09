@@ -163,6 +163,7 @@ def merge_configs(agf_config: AGFConfig, cli_config: CLIConfig) -> EffectiveConf
         sync_interval=cli_config.sync_interval,
         dry_run=cli_config.dry_run,
         single_run=cli_config.single_run,
+        testing=cli_config.testing,
         # Resolved values
         agent=resolved_agent,
         model_type=resolved_model_type,
