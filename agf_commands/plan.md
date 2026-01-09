@@ -113,7 +113,7 @@ IMPORTANT: Execute every step in order, top to bottom.
 
 Execute these commands to validate the task is complete:
 
-<list specific commands to validate the work. Be precise about what to run>
+<list specific commands to validate the work. Be precise about what to run. Include command that runs all the tests.>
 - Example: `uv run python -m py_compile apps/*.py` - Test to ensure the code compiles
 
 ## Notes

@@ -284,7 +284,7 @@ class WorkflowTaskHandler:
         command_template = CommandTemplate(
             prompt="chore",
             params=[worktree.worktree_id or task.task_id, task.description],
-            model=ModelType.STANDARD,
+            model=ModelType.THINKING,
             json_output=True,
         )
         result = self._execute_command(worktree_path, command_template)

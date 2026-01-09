@@ -170,7 +170,7 @@ class AgentConfig(BaseModel):
     """Configuration for agent execution."""
 
     model: str | None = None
-    timeout_seconds: int = 300
+    timeout_seconds: int = 3600
     working_dir: str | None = None
     output_format: str = "json"
     extra_args: list[str] = Field(default_factory=list)

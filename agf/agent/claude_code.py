@@ -119,7 +119,11 @@ class ClaudeCodeAgent:
 
         # Format prompt with namespace and params
         # Escape double quotes in params to prevent command parsing issues
-        params_str = " ".join(str(p).replace('"', '\\"') for p in command_template.params) if command_template.params else ""
+        params_str = (
+            " ".join(str(p).replace('"', '\\"') for p in command_template.params)
+            if command_template.params
+            else ""
+        )
         prompt = f"/{command_template.namespace}:{command_template.prompt} {params_str}".rstrip()
 
         # Execute using the existing run method with merged config
@@ -174,9 +178,7 @@ class ClaudeCodeAgent:
         try:
             return json.loads(output)
         except json.JSONDecodeError as e:
-            raise AgentOutputParseError(
-                self.name, output, f"Invalid JSON: {e}"
-            ) from e
+            raise AgentOutputParseError(self.name, output, f"Invalid JSON: {e}") from e
 
     def extract_json_output(self, result: AgentResult) -> JSONValue:
         """Extract JSON output from Claude Code result.
