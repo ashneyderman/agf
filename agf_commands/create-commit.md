@@ -7,9 +7,9 @@ Create git commit for all the uncommitted changes in the repository.
 # Instructions
 
 - make sure you refresh your context to see all the changed files.
-- generate <commit_message> that summirze changes to be committed.
+- generate <commit_message> that summirzes changes to be committed.
 - commit the changes with that <commit_message>.
-- save commit sha in <commit_sha>.
+- save short commit sha in <commit_sha>.
 - **DO NOT** indicate co-authoring attributions in the commit.
 
 ## Output Format

@@ -13,7 +13,7 @@ prompt: $2
 - Create a plan to complete the chore described in the `prompt`
 - The plan should be simple, thorough, and precise
 - Create the plan in the `specs/` directory with filename: `{agf_id}-chore-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the chore (e.g., "update-readme", "add-logging", "refactor-agent")
+  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "update-readme", "add-logging", "refactor-agent")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value
 

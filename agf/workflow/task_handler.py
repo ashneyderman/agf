@@ -259,7 +259,7 @@ class WorkflowTaskHandler:
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             prompt="plan",
-            params=[task.task_id, task.description],
+            params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
             json_output=True,
         )
@@ -282,7 +282,7 @@ class WorkflowTaskHandler:
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             prompt="chore",
-            params=[task.task_id, task.description],
+            params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.STANDARD,
             json_output=True,
         )
@@ -305,7 +305,7 @@ class WorkflowTaskHandler:
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             prompt="feature",
-            params=[task.task_id, task.description],
+            params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
             json_output=True,
         )
@@ -336,15 +336,54 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.output.strip()
 
+    def _create_commit(self, worktree: Worktree, task: Task) -> dict:
+        """Execute the create-commit prompt and return commit information.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            Dictionary containing commit_sha and commit_message
+
+        Raises:
+            Exception: If agent execution fails or JSON parsing fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            prompt="create-commit",
+            params=[],
+            model=ModelType.STANDARD,
+            json_output=True,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.json_output
+
+    def _get_task_type(self, task: Task) -> str | None:
+        """Detect the task type from task tags.
+
+        Args:
+            task: Task object containing tags
+
+        Returns:
+            Task type string ("chore", "feature", or "plan") or None if not found
+        """
+        valid_types = ["chore", "feature", "plan"]
+        for tag in task.tags:
+            if tag in valid_types:
+                return tag
+        return None
+
     def handle_task(self, worktree: Worktree, task: Task) -> bool:
-        """Handle complete task execution workflow.
+        """Handle complete task execution workflow with SDLC phases.
 
         This method orchestrates the entire task execution process:
         1. Initialize or validate worktree
         2. Update task status to IN_PROGRESS
-        3. Execute agent with configured parameters
-        4. Update task status to COMPLETED or FAILED
-        5. Record error details for failed tasks
+        3. Detect task type and run planning phase (plan/chore/feature)
+        4. Run implementation phase
+        5. Run commit phase
+        6. Update task status to COMPLETED with commit SHA
 
         Args:
             worktree: Worktree object containing worktree metadata
@@ -366,43 +405,54 @@ class WorkflowTaskHandler:
                 worktree.worktree_name, task.task_id, TaskStatus.IN_PROGRESS
             )
 
-            # Execute agent task
-            result = self._execute_command(
-                worktree_path,
-                CommandTemplate(
-                    prompt="empty-commit",
-                    params=[task.task_id, task.description],
-                    model=ModelType.STANDARD,
-                    json_output=True,
-                ),
-            )
-
-            # Update task status based on result
-            if result.success:
-                # Task completed successfully
-                commit_sha = isinstance(
-                    result.json_output, dict
-                ) and result.json_output.get("commit_sha")
-
-                self.task_manager.update_task_status(
-                    worktree.worktree_name,
-                    task.task_id,
-                    TaskStatus.COMPLETED,
-                    commit_sha=str(commit_sha) if commit_sha else None,
-                )
-                self._log(f"Task {task.task_id} completed successfully")
-                return True
-            else:
-                # Task failed
-                error_msg = result.error or "Agent execution failed"
+            # Detect task type
+            task_type = self._get_task_type(task)
+            if not task_type:
+                error_msg = "Task type not found in tags. Valid task types: chore, feature, plan"
+                self._log(f"Task {task.task_id} failed: {error_msg}")
                 self.task_manager.update_task_status(
                     worktree.worktree_name, task.task_id, TaskStatus.FAILED
                 )
                 self.task_manager.mark_task_error(
                     worktree.worktree_name, task.task_id, error_msg
                 )
-                self._log(f"Task {task.task_id} failed: {error_msg}")
                 return False
+
+            # Phase 1: Planning (run appropriate planning method based on task type)
+            try:
+                if task_type == "plan":
+                    spec_path = self._run_plan(worktree, task)
+                elif task_type == "chore":
+                    spec_path = self._run_chore(worktree, task)
+                elif task_type == "feature":
+                    spec_path = self._run_feature(worktree, task)
+                else:
+                    raise ValueError(f"Unknown task type: {task_type}")
+            except Exception as e:
+                raise Exception(f"Planning phase failed: {str(e)}") from e
+
+            # Phase 2: Implementation
+            try:
+                implementation_summary = self._run_implement(worktree, task, spec_path)
+            except Exception as e:
+                raise Exception(f"Implementation phase failed: {str(e)}") from e
+
+            # Phase 3: Commit
+            try:
+                commit_info = self._create_commit(worktree, task)
+                commit_sha = commit_info.get("commit_sha")
+            except Exception as e:
+                raise Exception(f"Commit phase failed: {str(e)}") from e
+
+            # Update task status to COMPLETED
+            self.task_manager.update_task_status(
+                worktree.worktree_name,
+                task.task_id,
+                TaskStatus.COMPLETED,
+                commit_sha=commit_sha,
+            )
+            self._log(f"Task {task.task_id} completed successfully")
+            return True
 
         except Exception as e:
             # Handle any unexpected errors

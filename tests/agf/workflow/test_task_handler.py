@@ -9,7 +9,7 @@ import pytest
 from git import Repo
 
 from agf.agent.base import AgentResult
-from agf.config.models import AGFConfig, AgentModelConfig, CLIConfig, EffectiveConfig
+from agf.config.models import AgentModelConfig, AGFConfig, CLIConfig, EffectiveConfig
 from agf.task_manager import TaskManager
 from agf.task_manager.models import Task, TaskStatus, Worktree
 from agf.workflow import WorkflowTaskHandler
@@ -84,9 +84,7 @@ class TestWorkflowTaskHandlerHelpers:
         with patch.dict(os.environ, {}, clear=True):
             assert handler._get_username() == "unknown"
 
-    def test_get_worktree_path(
-        self, mock_config, mock_task_manager, sample_worktree
-    ):
+    def test_get_worktree_path(self, mock_config, mock_task_manager, sample_worktree):
         """Test worktree path construction."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
         path = handler._get_worktree_path(sample_worktree)
@@ -106,9 +104,7 @@ class TestWorkflowTaskHandlerHelpers:
             branch = handler._get_branch_name(sample_worktree)
             assert branch == "alex/test-feature"
 
-    def test_get_branch_name_with_worktree_id(
-        self, mock_config, mock_task_manager
-    ):
+    def test_get_branch_name_with_worktree_id(self, mock_config, mock_task_manager):
         """Test branch name construction with worktree_id."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
 
@@ -215,9 +211,7 @@ class TestWorkflowTaskHandlerWorktree:
             current_branch = repo.active_branch.name
 
             # Validate current branch
-            assert (
-                handler._validate_branch_checkout(tmpdir, current_branch) is True
-            )
+            assert handler._validate_branch_checkout(tmpdir, current_branch) is True
 
     def test_validate_branch_checkout_wrong(self, mock_config, mock_task_manager):
         """Test validation fails for wrong branch."""
@@ -241,9 +235,7 @@ class TestWorkflowTaskHandlerWorktree:
             repo.heads["feature-branch"].checkout()
 
             # Validate against wrong branch name
-            assert (
-                handler._validate_branch_checkout(tmpdir, "wrong-branch") is False
-            )
+            assert handler._validate_branch_checkout(tmpdir, "wrong-branch") is False
 
 
 class TestWorkflowTaskHandlerIntegration:
@@ -263,16 +255,34 @@ class TestWorkflowTaskHandlerIntegration:
         """Test successful task handling."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
 
-        # Mock successful agent execution
-        mock_result = AgentResult(
+        # Add feature tag to task
+        sample_task.tags = ["feature"]
+
+        # Mock successful agent execution for all three phases
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-feature-test.md"},
+        )
+        implement_result = AgentResult(
             success=True,
             output="Task completed",
             exit_code=0,
             duration_seconds=10.0,
             agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
             json_output={"commit_sha": "abc123def456"},
         )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        mock_agent_runner.run_prompt.side_effect = [feature_result, implement_result, commit_result]
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -309,16 +319,11 @@ class TestWorkflowTaskHandlerIntegration:
         """Test task handling with agent failure."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
 
-        # Mock failed agent execution
-        mock_result = AgentResult(
-            success=False,
-            output="Task failed",
-            exit_code=1,
-            duration_seconds=5.0,
-            agent_name="claude-code",
-            error="Agent encountered an error",
-        )
-        mock_agent_runner.run_prompt.return_value = mock_result
+        # Add feature tag to task
+        sample_task.tags = ["feature"]
+
+        # Mock failed agent execution during planning phase
+        mock_agent_runner.run_prompt.side_effect = Exception("Agent encountered an error")
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -340,7 +345,7 @@ class TestWorkflowTaskHandlerIntegration:
 
         # Verify error recorded
         mock_task_manager.mark_task_error.assert_called_once_with(
-            "test-feature", "abc123", "Agent encountered an error"
+            "test-feature", "abc123", "Planning phase failed: Agent encountered an error"
         )
 
     @patch("agf.workflow.task_handler.AgentRunner")
@@ -374,12 +379,12 @@ class TestWorkflowTaskHandlerIntegration:
                 f.write("uncommitted")
 
             # Mock worktree path to use temp dir
-            with patch.object(
-                handler, "_get_worktree_path", return_value=tmpdir
-            ), patch.object(
-                handler, "_get_branch_name", return_value=repo.active_branch.name
-            ), patch(
-                "os.path.exists", return_value=True
+            with (
+                patch.object(handler, "_get_worktree_path", return_value=tmpdir),
+                patch.object(
+                    handler, "_get_branch_name", return_value=repo.active_branch.name
+                ),
+                patch("os.path.exists", return_value=True),
             ):
                 result = handler.handle_task(sample_worktree, sample_task)
 
@@ -417,12 +422,12 @@ class TestWorkflowTaskHandlerIntegration:
             repo.index.commit("Initial commit")
 
             # Mock worktree path to use temp dir with wrong branch
-            with patch.object(
-                handler, "_get_worktree_path", return_value=tmpdir
-            ), patch.object(
-                handler, "_get_branch_name", return_value="expected-branch"
-            ), patch(
-                "os.path.exists", return_value=True
+            with (
+                patch.object(handler, "_get_worktree_path", return_value=tmpdir),
+                patch.object(
+                    handler, "_get_branch_name", return_value="expected-branch"
+                ),
+                patch("os.path.exists", return_value=True),
             ):
                 result = handler.handle_task(sample_worktree, sample_task)
 
@@ -440,10 +445,13 @@ class TestWorkflowTaskHandlerPromptWrappers:
 
     @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_plan_success(
-        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_task
     ):
-        """Test successful plan execution."""
+        """Test successful plan execution with worktree_id."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-020")
 
         # Mock successful agent execution with JSON output
         mock_result = AgentResult(
@@ -452,33 +460,36 @@ class TestWorkflowTaskHandlerPromptWrappers:
             exit_code=0,
             duration_seconds=10.0,
             agent_name="claude-code",
-            json_output={"path": "specs/abc123-plan-test-task.md"},
+            json_output={"path": "specs/agf-020-plan-test-task.md"},
         )
         mock_agent_runner.run_prompt.return_value = mock_result
 
         # Call the wrapper
-        result = handler._run_plan(sample_worktree, sample_task)
+        result = handler._run_plan(worktree_with_id, sample_task)
 
         # Verify result
-        assert result == "specs/abc123-plan-test-task.md"
+        assert result == "specs/agf-020-plan-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
         mock_agent_runner.run_prompt.assert_called_once()
         call_args = mock_agent_runner.run_prompt.call_args
 
-        # Verify the command template
+        # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
         assert command_template.prompt == "plan"
-        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_chore_success(
-        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_task
     ):
-        """Test successful chore execution."""
+        """Test successful chore execution with worktree_id."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-020")
 
         # Mock successful agent execution with JSON output
         mock_result = AgentResult(
@@ -487,33 +498,36 @@ class TestWorkflowTaskHandlerPromptWrappers:
             exit_code=0,
             duration_seconds=10.0,
             agent_name="claude-code",
-            json_output={"path": "specs/abc123-chore-test-task.md"},
+            json_output={"path": "specs/agf-020-chore-test-task.md"},
         )
         mock_agent_runner.run_prompt.return_value = mock_result
 
         # Call the wrapper
-        result = handler._run_chore(sample_worktree, sample_task)
+        result = handler._run_chore(worktree_with_id, sample_task)
 
         # Verify result
-        assert result == "specs/abc123-chore-test-task.md"
+        assert result == "specs/agf-020-chore-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
         mock_agent_runner.run_prompt.assert_called_once()
         call_args = mock_agent_runner.run_prompt.call_args
 
-        # Verify the command template
+        # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
         assert command_template.prompt == "chore"
-        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "standard"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_feature_success(
-        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_task
     ):
-        """Test successful feature execution."""
+        """Test successful feature execution with worktree_id."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-020")
 
         # Mock successful agent execution with JSON output
         mock_result = AgentResult(
@@ -522,30 +536,35 @@ class TestWorkflowTaskHandlerPromptWrappers:
             exit_code=0,
             duration_seconds=10.0,
             agent_name="claude-code",
-            json_output={"path": "specs/abc123-feature-test-task.md"},
+            json_output={"path": "specs/agf-020-feature-test-task.md"},
         )
         mock_agent_runner.run_prompt.return_value = mock_result
 
         # Call the wrapper
-        result = handler._run_feature(sample_worktree, sample_task)
+        result = handler._run_feature(worktree_with_id, sample_task)
 
         # Verify result
-        assert result == "specs/abc123-feature-test-task.md"
+        assert result == "specs/agf-020-feature-test-task.md"
 
         # Verify AgentRunner was called with correct parameters
         mock_agent_runner.run_prompt.assert_called_once()
         call_args = mock_agent_runner.run_prompt.call_args
 
-        # Verify the command template
+        # Verify the command template uses worktree_id instead of task_id
         command_template = call_args[1]["prompt_template"]
         assert command_template.prompt == "feature"
-        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "thinking"
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_implement_success(
-        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
     ):
         """Test successful implement execution."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
@@ -578,3 +597,624 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.params == ["@specs/abc123-feature-test.md"]
         assert command_template.model == "standard"
         assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_commit_success(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful commit creation."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "abc123def456789",
+                "commit_message": "feat: implement test feature",
+            },
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_commit(sample_worktree, sample_task)
+
+        # Verify result
+        assert result["commit_sha"] == "abc123def456789"
+        assert result["commit_message"] == "feat: implement test feature"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "create-commit"
+        assert command_template.params == []
+        assert command_template.model == "standard"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_plan_fallback_to_task_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test plan execution falls back to task_id when worktree_id is None."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-plan-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper with worktree that has no worktree_id
+        result = handler._run_plan(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-plan-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template falls back to task_id
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "plan"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "thinking"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_chore_fallback_to_task_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test chore execution falls back to task_id when worktree_id is None."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-chore-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper with worktree that has no worktree_id
+        result = handler._run_chore(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-chore-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template falls back to task_id
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "chore"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is True
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_feature_fallback_to_task_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test feature execution falls back to task_id when worktree_id is None."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with JSON output
+        mock_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-feature-test-task.md"},
+        )
+        mock_agent_runner.run_prompt.return_value = mock_result
+
+        # Call the wrapper with worktree that has no worktree_id
+        result = handler._run_feature(sample_worktree, sample_task)
+
+        # Verify result
+        assert result == "specs/abc123-feature-test-task.md"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_prompt.assert_called_once()
+        call_args = mock_agent_runner.run_prompt.call_args
+
+        # Verify the command template falls back to task_id
+        command_template = call_args[1]["prompt_template"]
+        assert command_template.prompt == "feature"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "thinking"
+        assert command_template.json_output is True
+
+
+class TestWorkflowTaskHandlerTaskType:
+    """Test task type detection methods."""
+
+    def test_get_task_type_chore(self, mock_config, mock_task_manager):
+        """Test task type detection for chore tag."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test01",
+            description="Test task",
+            tags=["chore", "backend"],
+        )
+        assert handler._get_task_type(task) == "chore"
+
+    def test_get_task_type_feature(self, mock_config, mock_task_manager):
+        """Test task type detection for feature tag."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test02",
+            description="Test task",
+            tags=["urgent", "feature"],
+        )
+        assert handler._get_task_type(task) == "feature"
+
+    def test_get_task_type_plan(self, mock_config, mock_task_manager):
+        """Test task type detection for plan tag."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test03",
+            description="Test task",
+            tags=["plan"],
+        )
+        assert handler._get_task_type(task) == "plan"
+
+    def test_get_task_type_none(self, mock_config, mock_task_manager):
+        """Test task type detection returns None when no valid tag found."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test04",
+            description="Test task",
+            tags=["urgent", "backend"],
+        )
+        assert handler._get_task_type(task) is None
+
+    def test_get_task_type_empty_tags(self, mock_config, mock_task_manager):
+        """Test task type detection with empty tags."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test05",
+            description="Test task",
+            tags=[],
+        )
+        assert handler._get_task_type(task) is None
+
+    def test_get_task_type_first_match(self, mock_config, mock_task_manager):
+        """Test task type detection returns first matching tag."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test06",
+            description="Test task",
+            tags=["chore", "feature"],  # Multiple valid types
+        )
+        # Should return the first match found
+        assert handler._get_task_type(task) == "chore"
+
+
+class TestWorkflowTaskHandlerSDLCFlow:
+    """Test SDLC flow integration in handle_task."""
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_sdlc_flow_feature_success(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test successful SDLC flow for feature task."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a feature task
+        feature_task = Task(
+            task_id="feat01",
+            description="Add user authentication",
+            tags=["feature"],
+        )
+
+        # Mock agent execution results for each phase
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/feat01-feature-auth.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="- Implemented auth feature\n- Added tests",
+            exit_code=0,
+            duration_seconds=20.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "abc123",
+                "commit_message": "feat: add user authentication",
+            },
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_prompt.side_effect = [
+            feature_result,
+            implement_result,
+            commit_result,
+        ]
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, feature_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called 3 times (feature, implement, commit)
+        assert mock_agent_runner.run_prompt.call_count == 3
+
+        # Verify task status updates
+        assert mock_task_manager.update_task_status.call_count == 2
+        # First call: IN_PROGRESS
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "feat01", TaskStatus.IN_PROGRESS
+        )
+        # Second call: COMPLETED with commit SHA
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "feat01", TaskStatus.COMPLETED, commit_sha="abc123"
+        )
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_sdlc_flow_chore_success(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test successful SDLC flow for chore task."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a chore task
+        chore_task = Task(
+            task_id="chore1",
+            description="Update dependencies",
+            tags=["chore"],
+        )
+
+        # Mock agent execution results for each phase
+        chore_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/chore1-update-deps.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="- Updated dependencies\n- Ran tests",
+            exit_code=0,
+            duration_seconds=15.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "def456",
+                "commit_message": "chore: update dependencies",
+            },
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_prompt.side_effect = [
+            chore_result,
+            implement_result,
+            commit_result,
+        ]
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, chore_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called 3 times (chore, implement, commit)
+        assert mock_agent_runner.run_prompt.call_count == 3
+
+        # Verify task completed
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "chore1", TaskStatus.COMPLETED, commit_sha="def456"
+        )
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_sdlc_flow_plan_success(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test successful SDLC flow for plan task."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a plan task
+        plan_task = Task(
+            task_id="plan01",
+            description="Design authentication system",
+            tags=["plan"],
+        )
+
+        # Mock agent execution results for each phase
+        plan_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=15.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/plan01-auth-design.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="- Implemented design plan\n- Created architecture docs",
+            exit_code=0,
+            duration_seconds=25.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=4.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "ghi789",
+                "commit_message": "docs: add authentication system design",
+            },
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_prompt.side_effect = [
+            plan_result,
+            implement_result,
+            commit_result,
+        ]
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, plan_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called 3 times (plan, implement, commit)
+        assert mock_agent_runner.run_prompt.call_count == 3
+
+        # Verify task completed
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "plan01", TaskStatus.COMPLETED, commit_sha="ghi789"
+        )
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_missing_task_type(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test task handling fails when task type tag is missing."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a task without valid type tag
+        invalid_task = Task(
+            task_id="inval1",
+            description="Invalid task",
+            tags=["urgent", "backend"],  # No chore/feature/plan tag
+        )
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, invalid_task)
+
+        # Verify failure
+        assert result is False
+
+        # Verify error recorded with appropriate message
+        mock_task_manager.mark_task_error.assert_called_once()
+        args = mock_task_manager.mark_task_error.call_args[0]
+        assert "task type not found" in args[2].lower()
+        assert "chore" in args[2].lower()
+        assert "feature" in args[2].lower()
+        assert "plan" in args[2].lower()
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_planning_phase_failure(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test task handling fails when planning phase fails."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a feature task
+        feature_task = Task(
+            task_id="feat02",
+            description="Add payment processing",
+            tags=["feature"],
+        )
+
+        # Mock planning phase to raise an exception
+        mock_agent_runner.run_prompt.side_effect = Exception("Planning failed")
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, feature_task)
+
+        # Verify failure
+        assert result is False
+
+        # Verify error recorded
+        mock_task_manager.mark_task_error.assert_called_once()
+        args = mock_task_manager.mark_task_error.call_args[0]
+        assert "planning phase failed" in args[2].lower()
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_implementation_phase_failure(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test task handling fails when implementation phase fails."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a feature task
+        feature_task = Task(
+            task_id="feat03",
+            description="Add search functionality",
+            tags=["feature"],
+        )
+
+        # Mock planning succeeds, but implementation fails
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/feat03-search.md"},
+        )
+
+        mock_agent_runner.run_prompt.side_effect = [
+            feature_result,
+            Exception("Implementation failed"),
+        ]
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, feature_task)
+
+        # Verify failure
+        assert result is False
+
+        # Verify error recorded
+        mock_task_manager.mark_task_error.assert_called_once()
+        args = mock_task_manager.mark_task_error.call_args[0]
+        assert "implementation phase failed" in args[2].lower()
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_commit_phase_failure(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test task handling fails when commit phase fails."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a feature task
+        feature_task = Task(
+            task_id="feat04",
+            description="Add notifications",
+            tags=["feature"],
+        )
+
+        # Mock planning and implementation succeed, but commit fails
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/feat04-notifications.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="- Added notifications",
+            exit_code=0,
+            duration_seconds=20.0,
+            agent_name="claude-code",
+        )
+
+        mock_agent_runner.run_prompt.side_effect = [
+            feature_result,
+            implement_result,
+            Exception("Commit failed"),
+        ]
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, feature_task)
+
+        # Verify failure
+        assert result is False
+
+        # Verify error recorded
+        mock_task_manager.mark_task_error.assert_called_once()
+        args = mock_task_manager.mark_task_error.call_args[0]
+        assert "commit phase failed" in args[2].lower()

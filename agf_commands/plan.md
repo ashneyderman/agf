@@ -15,7 +15,7 @@ prompt: $2
   - Simple tasks (chores, fixes): Focus on specific changes and validation
   - Complex tasks (features, refactors): Include design, phases, and testing strategy
 - Create the plan in the `specs/` directory with filename: `{agf_id}-plan-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the task (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
+  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
 - Research the codebase starting with `README.md`
 - IMPORTANT: When you finish your plan, return only the path to the plan file created.
 - IMPORTANT: Replace every <placeholder> in the `Plan Format` with the requested value

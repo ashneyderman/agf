@@ -13,7 +13,7 @@ prompt: $2
 - Create a plan to implement the feature described in the `prompt`
 - The plan should be comprehensive, well-designed, and follow existing patterns
 - Create the plan in the `specs/` directory with filename: `{agf_id}-feature-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the feature (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
+  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value
 - Use your reasoning model: THINK HARD about the feature requirements, design, and implementation approach
