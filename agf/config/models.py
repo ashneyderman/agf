@@ -56,6 +56,7 @@ class AGFConfig(BaseModel):
         agent: Default agent to use (default: "claude-code")
         model_type: Default model type (default: "standard")
         branch_prefix: Branch name prefix for git worktrees (default: None, uses USER env var)
+        commands_namespace: Namespace for command templates (default: "agf")
         agents: Dictionary mapping agent names to their model configurations
 
     Example:
@@ -91,6 +92,7 @@ class AGFConfig(BaseModel):
     agent: str = "claude-code"
     model_type: str = Field(default="standard", alias="model-type")
     branch_prefix: str | None = Field(default=None, alias="branch-prefix")
+    commands_namespace: str = Field(default="agf", alias="commands-namespace")
     agents: dict[str, AgentModelConfig] = Field(default_factory=dict)
 
     @field_validator("concurrent_tasks")
@@ -115,6 +117,7 @@ class AGFConfig(BaseModel):
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
             agents={
                 "claude-code": AgentModelConfig(
                     thinking="opus", standard="sonnet", light="haiku"
@@ -145,6 +148,7 @@ class CLIConfig(BaseModel):
         agent: Agent override (None means use AGF config, default: None)
         model_type: Model type override (None means use AGF config, default: None)
         branch_prefix: Branch prefix override (None means use AGF config, default: None)
+        commands_namespace: Commands namespace override (None means use AGF config, default: None)
         testing: Testing mode flag - skip SDLC phases, only create empty commits (default: False)
 
     Example:
@@ -167,6 +171,7 @@ class CLIConfig(BaseModel):
     agent: str | None = None
     model_type: str | None = None
     branch_prefix: str | None = None
+    commands_namespace: str | None = None
     testing: bool = False
 
     @field_validator("sync_interval")
@@ -202,6 +207,7 @@ class EffectiveConfig(BaseModel):
         agent: Final agent to use (CLI override or AGF config)
         model_type: Final model type to use (CLI override or AGF config)
         branch_prefix: Final branch prefix to use (CLI override or AGF config)
+        commands_namespace: Final commands namespace to use (CLI override or AGF config)
 
     Example:
         ```python
@@ -237,3 +243,4 @@ class EffectiveConfig(BaseModel):
     agent: str
     model_type: str
     branch_prefix: str | None
+    commands_namespace: str

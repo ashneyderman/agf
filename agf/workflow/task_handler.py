@@ -266,6 +266,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="plan",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -289,6 +290,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="chore",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -312,6 +314,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="feature",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -336,6 +339,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="implement",
             params=[f"@{spec_path}"],
             model=ModelType.STANDARD,
@@ -359,6 +363,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="create-commit",
             params=[],
             model=ModelType.STANDARD,
@@ -382,6 +387,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="empty-commit",
             params=[task.task_id, task.description],
             model=ModelType.STANDARD,

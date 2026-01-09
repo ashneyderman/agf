@@ -47,6 +47,7 @@ def mock_config():
         agent=agf_config.agent,
         model_type=agf_config.model_type,
         branch_prefix=None,
+        commands_namespace="agf",
     )
 
 
@@ -151,6 +152,7 @@ class TestWorkflowTaskHandlerHelpers:
             agent=agf_config.agent,
             model_type=agf_config.model_type,
             branch_prefix="my-team",
+            commands_namespace="agf",
         )
 
         handler = WorkflowTaskHandler(config_with_prefix, mock_task_manager)
@@ -1393,6 +1395,7 @@ class TestWorkflowTaskHandlerTestingMode:
             agent=agf_config.agent,
             model_type=agf_config.model_type,
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
@@ -1479,6 +1482,7 @@ class TestWorkflowTaskHandlerTestingMode:
             agent=agf_config.agent,
             model_type=agf_config.model_type,
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
@@ -1556,6 +1560,7 @@ class TestWorkflowTaskHandlerTestingMode:
             agent=agf_config.agent,
             model_type=agf_config.model_type,
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)

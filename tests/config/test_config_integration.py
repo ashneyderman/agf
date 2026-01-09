@@ -332,6 +332,32 @@ class TestConfigMerging:
 
         assert effective.branch_prefix is None  # None passed through
 
+    def test_merge_cli_commands_namespace_override(self, tmp_path):
+        """Test that CLI commands_namespace override wins."""
+        tasks_file = tmp_path / "tasks.md"
+        tasks_file.touch()
+
+        agf_config = AGFConfig(commands_namespace="agf-ns")
+        cli_config = CLIConfig(
+            tasks_file=tasks_file, project_dir=tmp_path, commands_namespace="cli-ns"
+        )
+
+        effective = merge_configs(agf_config, cli_config)
+
+        assert effective.commands_namespace == "cli-ns"  # CLI wins
+
+    def test_merge_agf_commands_namespace_when_cli_none(self, tmp_path):
+        """Test that AGF config commands_namespace is used when CLI is None."""
+        tasks_file = tmp_path / "tasks.md"
+        tasks_file.touch()
+
+        agf_config = AGFConfig(commands_namespace="custom-ns")
+        cli_config = CLIConfig(tasks_file=tasks_file, project_dir=tmp_path)
+
+        effective = merge_configs(agf_config, cli_config)
+
+        assert effective.commands_namespace == "custom-ns"  # AGF config used
+
 
 class TestEndToEndConfigFlow:
     """End-to-end tests for configuration discovery and loading."""

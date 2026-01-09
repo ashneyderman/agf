@@ -172,3 +172,25 @@ def test_agf_config_branch_prefix_custom_value():
     config = AGFConfig(branch_prefix="team/project")
 
     assert config.branch_prefix == "team/project"
+
+
+def test_agf_config_commands_namespace_default():
+    """Test that commands_namespace defaults to 'agf'."""
+    config = AGFConfig.default()
+
+    assert config.commands_namespace == "agf"
+
+
+def test_agf_config_commands_namespace_hyphen_alias():
+    """Test that YAML hyphen alias works for commands_namespace."""
+    # Simulating YAML parsing which would use hyphen names
+    config = AGFConfig(**{"commands-namespace": "custom-ns"})
+
+    assert config.commands_namespace == "custom-ns"
+
+
+def test_agf_config_commands_namespace_custom_value():
+    """Test that custom commands_namespace value is preserved."""
+    config = AGFConfig(commands_namespace="my-namespace")
+
+    assert config.commands_namespace == "my-namespace"

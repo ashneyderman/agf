@@ -193,6 +193,7 @@ class TestProcessTask:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -234,6 +235,7 @@ class TestProcessTask:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -271,6 +273,7 @@ class TestProcessTask:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -309,6 +312,7 @@ class TestProcessTask:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -381,6 +385,7 @@ class TestProcessTasksParallel:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         count = await process_tasks_parallel(mock_task_manager, config)
@@ -429,6 +434,7 @@ class TestProcessTasksParallel:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -470,6 +476,7 @@ class TestProcessTasksParallel:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
@@ -505,6 +512,7 @@ class TestRunIteration:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         count = run_iteration(mock_task_manager, config, iteration=1)
@@ -541,6 +549,7 @@ class TestRunIteration:
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
+            commands_namespace="agf",
         )
 
         with patch("agf.triggers.process_tasks.WorkflowTaskHandler") as mock_handler:
