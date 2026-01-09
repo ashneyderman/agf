@@ -796,25 +796,25 @@ class TestWorkflowTaskHandlerTaskType:
         )
         assert handler._get_task_type(task) == "plan"
 
-    def test_get_task_type_none(self, mock_config, mock_task_manager):
-        """Test task type detection returns None when no valid tag found."""
+    def test_get_task_type_defaults_to_plan(self, mock_config, mock_task_manager):
+        """Test task type detection defaults to 'plan' when no valid tag found."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
         task = Task(
             task_id="test04",
             description="Test task",
             tags=["urgent", "backend"],
         )
-        assert handler._get_task_type(task) is None
+        assert handler._get_task_type(task) == "plan"
 
     def test_get_task_type_empty_tags(self, mock_config, mock_task_manager):
-        """Test task type detection with empty tags."""
+        """Test task type detection defaults to 'plan' with empty tags."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
         task = Task(
             task_id="test05",
             description="Test task",
             tags=[],
         )
-        assert handler._get_task_type(task) is None
+        assert handler._get_task_type(task) == "plan"
 
     def test_get_task_type_first_match(self, mock_config, mock_task_manager):
         """Test task type detection returns first matching tag."""
@@ -1057,30 +1057,65 @@ class TestWorkflowTaskHandlerSDLCFlow:
         mock_task_manager,
         sample_worktree,
     ):
-        """Test task handling fails when task type tag is missing."""
+        """Test task handling defaults to 'plan' workflow when task type tag is missing."""
         handler = WorkflowTaskHandler(mock_config, mock_task_manager)
 
-        # Create a task without valid type tag
-        invalid_task = Task(
+        # Create a task without valid type tag (should default to plan)
+        task_without_type = Task(
             task_id="inval1",
-            description="Invalid task",
+            description="Task without type tag",
             tags=["urgent", "backend"],  # No chore/feature/plan tag
         )
 
+        # Mock agent execution results for each phase (plan workflow)
+        plan_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/inval1-default-plan.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="- Implemented task\n- Added documentation",
+            exit_code=0,
+            duration_seconds=15.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "xyz123",
+                "commit_message": "docs: task without type tag",
+            },
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_prompt.side_effect = [
+            plan_result,
+            implement_result,
+            commit_result,
+        ]
+
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
-            result = handler.handle_task(sample_worktree, invalid_task)
+            result = handler.handle_task(sample_worktree, task_without_type)
 
-        # Verify failure
-        assert result is False
+        # Verify success
+        assert result is True
 
-        # Verify error recorded with appropriate message
-        mock_task_manager.mark_task_error.assert_called_once()
-        args = mock_task_manager.mark_task_error.call_args[0]
-        assert "task type not found" in args[2].lower()
-        assert "chore" in args[2].lower()
-        assert "feature" in args[2].lower()
-        assert "plan" in args[2].lower()
+        # Verify agent was called 3 times (plan, implement, commit)
+        assert mock_agent_runner.run_prompt.call_count == 3
+
+        # Verify task completed successfully
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "inval1", TaskStatus.COMPLETED, commit_sha="xyz123"
+        )
 
     @patch("agf.workflow.task_handler.AgentRunner")
     @patch("agf.workflow.task_handler.mk_worktree")
