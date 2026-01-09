@@ -205,3 +205,53 @@ class TestOpenCodeAgent:
         assert result.success is True
         assert result.output == "Plain text output"
         assert result.parsed_output is None
+
+    @patch("agf.agent.opencode.shutil.which")
+    @patch("agf.agent.opencode.subprocess.run")
+    def test_run_with_logger(self, mock_run, mock_which):
+        """Test that the logger is called with the command when configured."""
+        mock_which.return_value = "/usr/bin/opencode"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        # Create a mock logger function
+        mock_logger = MagicMock()
+
+        agent = OpenCodeAgent()
+        config = AgentConfig(logger=mock_logger)
+        result = agent.run("test prompt", config)
+
+        # Verify the logger was called exactly once
+        assert mock_logger.call_count == 1
+
+        # Verify the logged command contains expected parts
+        logged_command = mock_logger.call_args[0][0]
+        assert "opencode" in logged_command
+        assert "run" in logged_command
+        assert "test prompt" in logged_command
+        assert "--format" in logged_command
+
+        # Verify the run was successful
+        assert result.success is True
+
+    @patch("agf.agent.opencode.shutil.which")
+    @patch("agf.agent.opencode.subprocess.run")
+    def test_run_without_logger(self, mock_run, mock_which):
+        """Test that running without a logger works correctly."""
+        mock_which.return_value = "/usr/bin/opencode"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = OpenCodeAgent()
+        config = AgentConfig(logger=None)
+        result = agent.run("test prompt", config)
+
+        # Verify the run was successful without errors
+        assert result.success is True
+        assert result.exit_code == 0

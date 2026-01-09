@@ -49,10 +49,12 @@ class TestAgentConfig:
         """Test that default values are set correctly."""
         config = AgentConfig()
         assert config.model is None
-        assert config.timeout_seconds == 300
+        assert config.timeout_seconds == 3600
         assert config.working_dir is None
         assert config.output_format == "json"
         assert config.extra_args == []
+        assert config.json_output is False
+        assert config.logger is None
         assert config.skip_permissions is False
         assert config.max_turns is None
         assert config.tools is None

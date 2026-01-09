@@ -2,6 +2,7 @@
 
 import json
 import re
+import shlex
 import shutil
 import subprocess
 import time
@@ -38,6 +39,10 @@ class OpenCodeAgent:
 
         # Build the command
         cmd = self._build_command(prompt, config)
+
+        # Log the command if logger is configured
+        if config.logger is not None:
+            config.logger(shlex.join(cmd))
 
         try:
             result = subprocess.run(

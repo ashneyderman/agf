@@ -1,7 +1,7 @@
 """Base abstractions for the agent package."""
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Callable, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
 
@@ -175,6 +175,11 @@ class AgentConfig(BaseModel):
     output_format: str = "json"
     extra_args: list[str] = Field(default_factory=list)
     json_output: bool = False
+
+    # Logger function to log the CLI command before execution.
+    # If None, no logging is performed. The logger receives the fully
+    # assembled CLI command as a string for debugging/auditing purposes.
+    logger: Callable[[str], None] | None = None
 
     # Claude Code specific options
     skip_permissions: bool = False
