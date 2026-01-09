@@ -294,6 +294,44 @@ class TestConfigMerging:
         assert effective.dry_run is True
         assert effective.single_run is True
 
+    def test_merge_cli_branch_prefix_override(self, tmp_path):
+        """Test that CLI branch_prefix override wins."""
+        tasks_file = tmp_path / "tasks.md"
+        tasks_file.touch()
+
+        agf_config = AGFConfig(branch_prefix="agf-team")
+        cli_config = CLIConfig(
+            tasks_file=tasks_file, project_dir=tmp_path, branch_prefix="cli-team"
+        )
+
+        effective = merge_configs(agf_config, cli_config)
+
+        assert effective.branch_prefix == "cli-team"  # CLI wins
+
+    def test_merge_agf_branch_prefix_when_cli_none(self, tmp_path):
+        """Test that AGF config branch_prefix is used when CLI is None."""
+        tasks_file = tmp_path / "tasks.md"
+        tasks_file.touch()
+
+        agf_config = AGFConfig(branch_prefix="agf-team")
+        cli_config = CLIConfig(tasks_file=tasks_file, project_dir=tmp_path)
+
+        effective = merge_configs(agf_config, cli_config)
+
+        assert effective.branch_prefix == "agf-team"  # AGF config used
+
+    def test_merge_branch_prefix_none_when_both_none(self, tmp_path):
+        """Test that None is passed through when both are None."""
+        tasks_file = tmp_path / "tasks.md"
+        tasks_file.touch()
+
+        agf_config = AGFConfig.default()  # branch_prefix is None
+        cli_config = CLIConfig(tasks_file=tasks_file, project_dir=tmp_path)
+
+        effective = merge_configs(agf_config, cli_config)
+
+        assert effective.branch_prefix is None  # None passed through
+
 
 class TestEndToEndConfigFlow:
     """End-to-end tests for configuration discovery and loading."""

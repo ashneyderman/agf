@@ -150,3 +150,25 @@ def test_agf_config_empty_agents_dict():
 
     assert config.agents == {}
     assert config.worktrees == ".worktrees"  # other defaults still work
+
+
+def test_agf_config_branch_prefix_default():
+    """Test that branch_prefix defaults to None."""
+    config = AGFConfig.default()
+
+    assert config.branch_prefix is None
+
+
+def test_agf_config_branch_prefix_hyphen_alias():
+    """Test that YAML hyphen alias works for branch_prefix."""
+    # Simulating YAML parsing which would use hyphen names
+    config = AGFConfig(**{"branch-prefix": "my-team"})
+
+    assert config.branch_prefix == "my-team"
+
+
+def test_agf_config_branch_prefix_custom_value():
+    """Test that custom branch_prefix value is preserved."""
+    config = AGFConfig(branch_prefix="team/project")
+
+    assert config.branch_prefix == "team/project"

@@ -328,6 +328,12 @@ def validate_project_dir(
     default=None,
     help="Override the default model type (from AGF config or defaults)",
 )
+@click.option(
+    "--branch-prefix",
+    type=str,
+    default=None,
+    help="Override the branch name prefix (default: uses USER environment variable)",
+)
 def main(
     tasks_file: Path,
     project_dir: Path,
@@ -337,6 +343,7 @@ def main(
     single_run: bool,
     agent: str | None,
     model_type: str | None,
+    branch_prefix: str | None,
 ) -> None:
     """Process tasks from a task list continuously or on-demand.
 
@@ -384,6 +391,7 @@ def main(
         single_run=single_run,
         agent=agent,
         model_type=model_type,
+        branch_prefix=branch_prefix,
     )
 
     # Merge configurations with precedence: CLI > AGF > defaults
@@ -398,6 +406,7 @@ def main(
     log(f"Concurrent tasks: {effective_config.concurrent_tasks}")
     log(f"Agent: {effective_config.agent}")
     log(f"Model type: {effective_config.model_type}")
+    log(f"Branch prefix: {effective_config.branch_prefix or 'USER env var'}")
 
     # Initialize TaskManager
     try:

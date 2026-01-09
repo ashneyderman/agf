@@ -23,6 +23,10 @@ agent: claude-code
 # Can be overridden with --model CLI option
 model-type: standard
 
+# Branch name prefix for git worktrees (default: uses USER env var)
+# Can be overridden with --branch-prefix CLI option
+# branch-prefix: my-team
+
 # Agent-specific model mappings
 # Maps abstract model types (thinking, standard, light) to concrete model names
 agents:
