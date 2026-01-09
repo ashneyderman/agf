@@ -15,7 +15,7 @@ Unify prompt processing across all available command prompts by creating a singl
 
 Create a unified prompt processing interface that:
 1. Introduces a `CommandTemplate` model in `agf/agent/models.py` with standard fields for all prompt executions
-2. Refactors the Agent protocol to use `run_command(prompt_template: CommandTemplate)` instead of `run(prompt: str, config: AgentConfig)`
+2. Refactors the Agent protocol to use `run_command(command_template: CommandTemplate)` instead of `run(prompt: str, config: AgentConfig)`
 3. Updates both ClaudeCodeAgent and OpenCodeAgent implementations to use the new interface
 4. Maintains backward compatibility where needed during the transition
 
@@ -83,7 +83,7 @@ Ensure the new interface works correctly:
 ### 2. Update Agent protocol
 
 - In agf/agent/base.py, import CommandTemplate from agf.agent.models
-- Add new method signature to Agent protocol: `run_command(self, prompt_template: CommandTemplate, config: AgentConfig | None = None) -> AgentResult`
+- Add new method signature to Agent protocol: `run_command(self, command_template: CommandTemplate, config: AgentConfig | None = None) -> AgentResult`
 - Add docstring for run_command explaining it replaces the run method
 - Keep the existing run method in the protocol for now to maintain backward compatibility
 
@@ -91,9 +91,9 @@ Ensure the new interface works correctly:
 
 - In agf/agent/claude_code.py, import CommandTemplate from agf.agent.models
 - Add run_command method to ClaudeCodeAgent class
-- Extract prompt text from prompt_template.prompt
-- If prompt_template.model is not None, merge it into config (create new config if needed)
-- If prompt_template.json_output is True, ensure config.json_output is set
+- Extract prompt text from command_template.prompt
+- If command_template.model is not None, merge it into config (create new config if needed)
+- If command_template.json_output is True, ensure config.json_output is set
 - Call the internal _build_command and execution logic with the extracted values
 - Return AgentResult as before
 
@@ -101,9 +101,9 @@ Ensure the new interface works correctly:
 
 - In agf/agent/opencode.py, import CommandTemplate from agf.agent.models
 - Add run_command method to OpenCodeAgent class
-- Extract prompt text from prompt_template.prompt
-- If prompt_template.model is not None, merge it into config (create new config if needed)
-- If prompt_template.json_output is True, ensure config.json_output is set
+- Extract prompt text from command_template.prompt
+- If command_template.model is not None, merge it into config (create new config if needed)
+- If command_template.json_output is True, ensure config.json_output is set
 - Call the internal _build_command and execution logic with the extracted values
 - Return AgentResult as before
 

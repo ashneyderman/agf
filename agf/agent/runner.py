@@ -54,10 +54,10 @@ class AgentRunner:
     def run_command(
         cls,
         agent_name: str,
-        prompt_template: CommandTemplate,
+        command_template: CommandTemplate,
         config: AgentConfig | None = None,
     ) -> AgentResult:
-        """Run an agent by name with a structured prompt template.
+        """Run an agent by name with a structured command template.
 
         This method provides a unified interface for command execution, supporting
         namespace organization, parameter templating, JSON output extraction,
@@ -65,7 +65,7 @@ class AgentRunner:
 
         Args:
             agent_name: Name of the registered agent to execute
-            prompt_template: Structured prompt with metadata and configuration
+            command_template: Structured command with metadata and configuration
             config: Optional execution configuration (timeout, working dir, etc.)
 
         Returns:
@@ -75,7 +75,7 @@ class AgentRunner:
             AgentError: If the agent name is not registered
         """
         agent = cls.get_agent(agent_name)
-        return agent.run_command(prompt_template, config)
+        return agent.run_command(command_template, config)
 
 
 # Pre-register built-in agents

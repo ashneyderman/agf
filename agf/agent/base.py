@@ -204,16 +204,16 @@ class Agent(Protocol):
         ...
 
     def run_command(
-        self, prompt_template: "CommandTemplate", config: AgentConfig | None = None
+        self, command_template: "CommandTemplate", config: AgentConfig | None = None
     ) -> AgentResult:
-        """Execute the agent with a structured prompt template.
+        """Execute the agent with a structured command template.
 
         This method provides a unified interface for command execution, supporting
         namespace organization, parameter templating, JSON output extraction,
         and per-prompt model selection.
 
         Args:
-            prompt_template: Structured prompt with metadata and configuration
+            command_template: Structured command with metadata and configuration
             config: Optional execution configuration (timeout, working dir, etc.)
 
         Returns:

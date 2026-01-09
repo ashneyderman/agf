@@ -91,16 +91,16 @@ class ClaudeCodeAgent:
         return agent_result
 
     def run_command(
-        self, prompt_template: CommandTemplate, config: AgentConfig | None = None
+        self, command_template: CommandTemplate, config: AgentConfig | None = None
     ) -> AgentResult:
-        """Execute Claude Code with a structured prompt template.
+        """Execute Claude Code with a structured command template.
 
         This method provides a unified interface for command execution, merging
         template-level configuration (model, json_output) with execution-level
         configuration (timeout, working directory, etc.).
 
         Args:
-            prompt_template: Structured prompt with metadata and configuration
+            command_template: Structured command with metadata and configuration
             config: Optional execution configuration (timeout, working dir, etc.)
 
         Returns:
@@ -111,16 +111,16 @@ class ClaudeCodeAgent:
 
         # Merge template configuration into config
         # Template values take precedence over config defaults
-        if prompt_template.model is not None:
-            config.model = prompt_template.model.value
+        if command_template.model is not None:
+            config.model = command_template.model.value
 
-        if prompt_template.json_output:
+        if command_template.json_output:
             config.json_output = True
 
         # Format prompt with namespace and params
         # Escape double quotes in params to prevent command parsing issues
-        params_str = " ".join(str(p).replace('"', '\\"') for p in prompt_template.params) if prompt_template.params else ""
-        prompt = f"/{prompt_template.namespace}:{prompt_template.prompt} {params_str}".rstrip()
+        params_str = " ".join(str(p).replace('"', '\\"') for p in command_template.params) if command_template.params else ""
+        prompt = f"/{command_template.namespace}:{command_template.prompt} {params_str}".rstrip()
 
         # Execute using the existing run method with merged config
         return self.run(prompt, config)

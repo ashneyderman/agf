@@ -12,6 +12,6 @@ Unify prompt processing across all the available command prompts so we have a si
   - params: list default value None,
   - json_output: boolean default False,
   - model: ModelType default None
-- rename `run` to `run_command` protocol function in `Agent` and replace prompt parameter with prompt_template: CommandTemplate
+- rename `run` to `run_command` protocol function in `Agent` and replace prompt parameter with command_template: CommandTemplate
 - change opencode implementation of `run` to `run_command`
 - add claude code implementation of `run` to `run_command`

@@ -475,7 +475,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "plan"
         assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "thinking"
@@ -513,7 +513,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "standard"
@@ -551,7 +551,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template uses worktree_id instead of task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "feature"
         assert command_template.params == ["agf-020", "Test task description"]
         assert command_template.model == "thinking"
@@ -592,7 +592,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "implement"
         assert command_template.params == ["@specs/abc123-feature-test.md"]
         assert command_template.model == "standard"
@@ -636,7 +636,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "create-commit"
         assert command_template.params == []
         assert command_template.model == "standard"
@@ -676,7 +676,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "plan"
         assert command_template.params == ["abc123", "Test task description"]
         assert command_template.model == "thinking"
@@ -716,7 +716,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "chore"
         assert command_template.params == ["abc123", "Test task description"]
         assert command_template.model == "standard"
@@ -756,7 +756,7 @@ class TestWorkflowTaskHandlerPromptWrappers:
         call_args = mock_agent_runner.run_command.call_args
 
         # Verify the command template falls back to task_id
-        command_template = call_args[1]["prompt_template"]
+        command_template = call_args[1]["command_template"]
         assert command_template.prompt == "feature"
         assert command_template.params == ["abc123", "Test task description"]
         assert command_template.model == "thinking"
