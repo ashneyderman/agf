@@ -123,9 +123,9 @@ class ClaudeCodeAgent:
             config.json_output = True
 
         # Format prompt with namespace and params
-        # Escape double quotes in params to prevent command parsing issues
+        # Escape double and single quotes in params to prevent command parsing issues
         params_str = (
-            " ".join(str(p).replace('"', '\\"') for p in command_template.params)
+            " ".join(f'"{str(p).replace('"', '\\"').replace("'", "\\'")}"' for p in command_template.params)
             if command_template.params
             else ""
         )

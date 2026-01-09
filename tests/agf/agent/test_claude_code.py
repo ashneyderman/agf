@@ -273,3 +273,212 @@ class TestClaudeCodeAgent:
         # Verify the run was successful without errors
         assert result.success is True
         assert result.exit_code == 0
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_with_params(self, mock_run, mock_which):
+        """Test run_command wraps parameters in double quotes."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+            params=["param1", "param2"],
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called with properly quoted parameters
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify parameters are wrapped in double quotes
+        assert '/test:command "param1" "param2"' == prompt
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_with_params_containing_spaces(self, mock_run, mock_which):
+        """Test run_command handles parameters with spaces correctly."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+            params=["param with spaces", "another param"],
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called with properly quoted parameters
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify parameters with spaces are wrapped in double quotes
+        assert '/test:command "param with spaces" "another param"' == prompt
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_with_params_containing_quotes(self, mock_run, mock_which):
+        """Test run_command escapes double quotes in parameters."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+            params=['param with "quotes"', "normal"],
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called with properly quoted and escaped parameters
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify double quotes are escaped and parameters are wrapped in double quotes
+        assert '/test:command "param with \\"quotes\\"" "normal"' == prompt
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_with_params_containing_single_quotes(self, mock_run, mock_which):
+        """Test run_command escapes single quotes in parameters."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+            params=["param with 'single quotes'", "normal"],
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called with properly quoted and escaped parameters
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify single quotes are escaped and parameters are wrapped in double quotes
+        assert r'/test:command "param with \'single quotes\'" "normal"' == prompt
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_with_params_containing_mixed_quotes(self, mock_run, mock_which):
+        """Test run_command escapes both single and double quotes in parameters."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+            params=['param with "double" and \'single\' quotes'],
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called with properly quoted and escaped parameters
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify both quote types are escaped and parameters are wrapped in double quotes
+        assert r'/test:command "param with \"double\" and \'single\' quotes"' == prompt
+
+    @patch("agf.agent.claude_code.shutil.which")
+    @patch("agf.agent.claude_code.subprocess.run")
+    def test_run_command_without_params(self, mock_run, mock_which):
+        """Test run_command works without parameters."""
+        from agf.agent.models import CommandTemplate
+
+        mock_which.return_value = "/usr/bin/claude"
+        mock_run.return_value = MagicMock(
+            stdout='{"result": "success"}',
+            stderr="",
+            returncode=0,
+        )
+
+        agent = ClaudeCodeAgent()
+        template = CommandTemplate(
+            namespace="test",
+            prompt="command",
+        )
+        result = agent.run_command(template)
+
+        # Verify the run was successful
+        assert result.success is True
+
+        # Verify the command was called
+        mock_run.assert_called_once()
+        called_cmd = mock_run.call_args[0][0]
+
+        # Find the -p flag index to get the prompt
+        p_idx = called_cmd.index("-p")
+        prompt = called_cmd[p_idx + 1]
+
+        # Verify no parameters are appended
+        assert '/test:command' == prompt
