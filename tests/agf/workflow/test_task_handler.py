@@ -738,6 +738,86 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_github_pr_success(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful GitHub PR creation."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="https://github.com/owner/repo/pull/123\n\nPR #123: agf-027 - Add create-github-pr wrapper\n",
+            exit_code=0,
+            duration_seconds=8.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_github_pr(sample_worktree, sample_task)
+
+        # Verify result (should be stripped)
+        assert result == "https://github.com/owner/repo/pull/123\n\nPR #123: agf-027 - Add create-github-pr wrapper"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "create-github-pr"
+        assert command_template.params == ["abc123"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_github_pr_uses_worktree_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test that create_github_pr uses worktree_id when available."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-027")
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="https://github.com/owner/repo/pull/456\n\nPR #456: agf-027 - Feature implementation\n",
+            exit_code=0,
+            duration_seconds=8.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_github_pr(worktree_with_id, sample_task)
+
+        # Verify result
+        assert result == "https://github.com/owner/repo/pull/456\n\nPR #456: agf-027 - Feature implementation"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template uses worktree_id
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "create-github-pr"
+        assert command_template.params == ["agf-027"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_plan_fallback_to_task_id(
         self,
         mock_agent_runner,

@@ -397,6 +397,30 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
+    def _create_github_pr(self, worktree: Worktree, task: Task) -> str:
+        """Execute the create-github-pr prompt and return PR view information.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            String containing the output of gh pr view command
+
+        Raises:
+            Exception: If agent execution fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
+            prompt="create-github-pr",
+            params=[worktree.worktree_id or task.task_id],
+            model=ModelType.STANDARD,
+            json_output=False,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.output.strip()
+
     def _get_task_type(self, task: Task) -> str:
         """Detect the task type from task tags.
 
