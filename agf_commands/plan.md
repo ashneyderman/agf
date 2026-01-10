@@ -1,40 +1,40 @@
-# Plan
+# General Planning
 
 Create a plan to complete the task using the specified markdown `Plan Format`. Research the codebase and create a thorough plan appropriate to the task's complexity.
 
-## Variables
+# Variables
 
 agf_id: $1
 prompt: $2
 
-## Instructions
+# Instructions
 
-- If the agf_id or prompt is not provided, stop and ask the user to provide them.
-- IMPORTANT: Create a plan to complete the task described in the `prompt`
+- If the <agf_id> or <prompt> is not provided, stop and ask the user to provide them.
+- IMPORTANT: Create a plan to complete the task described in the <prompt>
 - The plan should be appropriately detailed based on the task complexity:
   - Simple tasks (chores, fixes): Focus on specific changes and validation
   - Complex tasks (features, refactors): Include design, phases, and testing strategy
-- Create the plan in the `specs/` directory with filename: `{agf_id}-plan-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
+- Create the plan in the `specs/` directory with filename: `<agf_id>-plan-<descriptive_name>.md`
+  - Replace `<descriptive_name>` with a short, descriptive name based on the `prompt` itself (e.g., "update-readme", "add-logging", "implement-api", "refactor-agent")
 - Research the codebase starting with `README.md`
 - IMPORTANT: When you finish your plan, return only the path to the plan file created.
 - IMPORTANT: Replace every <placeholder> in the `Plan Format` with the requested value
 - Use your reasoning model: ULTRATHINK about the task requirements and appropriate level of planning needed
 - Follow existing patterns and conventions in the codebase
 
-## Codebase Structure
+# Codebase Structure
 
 - Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines.
 
-## Plan Format
+# Plan Format
 
 ```md
 # Plan: <task name>
 
 ## Metadata
 
-agf_id: `{agf_id}`
-prompt: `{prompt}`
+agf_id: `<agf_id>`
+prompt: `<prompt>`
 task_type: <chore|feature|refactor|fix|enhancement>
 complexity: <simple|medium|complex>
 
@@ -121,16 +121,24 @@ Execute these commands to validate the task is complete:
 <optional additional context, considerations, or dependencies. If new libraries are needed, specify using `uv add`>
 ```
 
-## Task
+# Task
 
-Use the task description from the `prompt` variable.
+Use the task description from the <prompt> variable.
 
-## Output Format
+# Output Format
 
 IMPORTANT: Return a JSON object with this structure:
 
 ```json
 {
-  "path": "specs/{agf_id}-plan-{descriptive-name}.md"
+  "path": "specs/<agf_id>-plan-<descriptive_name>.md"
+}
+```
+
+## Example Output
+
+```json
+{
+  "path": "specs/agf-001-plan-start-worktree-api.md"
 }
 ```

@@ -13,13 +13,22 @@ Create git commit for all the uncommitted changes in the repository.
 - Use `git status --porcelain` command to check if there are any uncommitted changes. If there are still changes uncommitted use `git add . ; git commit --amend` command to add those changes.
 - save short commit sha in <commit_sha>.
 
-## Output Format
+# Output Format
 
-IMPORTANT: Return a JSON array with this structure:
+IMPORTANT: Return a JSON object with this structure:
 
 ```json
 {
   "commit_sha": "<commit_sha>",
   "commit_message": "<commit_message>"
+}
+```
+
+## Example Output
+
+```json
+{
+  "commit_sha": "0acf3cf",
+  "commit_message": "feat: add create_github_pr wrapper method with tests"
 }
 ```

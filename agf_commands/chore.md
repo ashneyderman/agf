@@ -2,34 +2,33 @@
 
 Create a plan to complete the chore using the specified markdown `Plan Format`. Research the codebase and create a thorough plan.
 
-## Variables
+# Variables
 
 agf_id: $1
 prompt: $2
 
-## Instructions
+# Instructions
 
 - If the agf_id or prompt is not provided, stop and ask the user to provide them.
-- Create a plan to complete the chore described in the `prompt`
+- Create a plan to complete the chore described in the <prompt>
 - The plan should be simple, thorough, and precise
-- Create the plan in the `specs/` directory with filename: `{agf_id}-chore-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "update-readme", "add-logging", "refactor-agent")
+- Create the plan in the `specs/` directory with filename: `<agf_id>-chore-<descriptive_name>.md`
+  - Replace <descriptive-name> with a short, descriptive name based on the <prompt> itself (e.g., "update-readme", "add-logging", "refactor-agent")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value
 
-## Codebase Structure
+# Codebase Structure
 
 - Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines.
 
-## Plan Format
+# Plan Format
 
 ```md
 # Chore: <chore name>
 
 ## Metadata
 
-agf_id: `{agf_id}`
-prompt: `{prompt}`
+agf_id: `<agf_id><descriptive_name>prompt: `{prompt}`
 
 ## Chore Description
 
@@ -69,16 +68,24 @@ Execute these commands to validate the chore is complete:
 <optional additional context or considerations>
 ```
 
-## Chore
+# Chore
 
-Use the chore description from the `prompt` variable.
+Use the chore description from the <prompt> variable.
 
-## Output Format
+# Output Format
 
 IMPORTANT: Return a JSON object with this structure:
 
 ```json
 {
-  "path": "specs/{agf_id}-chore-{descriptive-name}.md"
+  "path": "specs/<agf_id>-chore-<descriptive_name>.md"
+}
+```
+
+## Example Output
+
+```json
+{
+  "path": "specs/agf-001-chore-start-worktree-api.md"
 }
 ```

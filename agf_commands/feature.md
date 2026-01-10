@@ -2,37 +2,36 @@
 
 Create a plan to implement the feature using the specified markdown `Plan Format`. Research the codebase and create a thorough plan.
 
-## Variables
+# Variables
 
 agf_id: $1
 prompt: $2
 
-## Instructions
+# Instructions
 
 - If the agf_id or prompt is not provided, stop and ask the user to provide them.
-- Create a plan to implement the feature described in the `prompt`
+- Create a plan to implement the feature described in the <prompt>
 - The plan should be comprehensive, well-designed, and follow existing patterns
-- Create the plan in the `specs/` directory with filename: `{agf_id}-feature-{descriptive-name}.md`
-  - Replace `{descriptive-name}` with a short, descriptive name based on the `prompt` itself (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
+- Create the plan in the `specs/` directory with filename: `<agf_id>-feature-<descriptive_name>.md`
+  - Replace `<descriptive_name>` with a short, descriptive name based on the <prompt> itself (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
 - Research the codebase starting with `README.md`
 - Replace every <placeholder> in the `Plan Format` with the requested value
 - Use your reasoning model: THINK HARD about the feature requirements, design, and implementation approach
 - Follow existing patterns and conventions in the codebase
 - Design for extensibility and maintainability
 
-## Codebase Structure
+# Codebase Structure
 
 - Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines.
 
-## Plan Format
+# Plan Format
 
 ```md
 # Feature: <feature name>
 
 ## Metadata
 
-agf_id: `{agf_id}`
-prompt: `{prompt}`
+agf_id: `<agf_id><descriptive_name>prompt: `{prompt}`
 
 ## Feature Description
 
@@ -116,16 +115,24 @@ Execute these commands to validate the feature is complete:
 <optional additional context, future considerations, or dependencies. If new libraries are needed, specify using `uv add`>
 ```
 
-## Feature
+# Feature
 
-Use the feature description from the `prompt` variable.
+Use the feature description from the <prompt> variable.
 
-## Output Format
+# Output Format
 
 IMPORTANT: Return a JSON object with this structure:
 
 ```json
 {
-  "path": "specs/{agf_id}-feature-{descriptive-name}.md"
+  "path": "specs/<agf_id>-feature-<descriptive_name>.md"
+}
+```
+
+## Example Output
+
+```json
+{
+  "path": "specs/agf-001-feature-start-worktree-api.md"
 }
 ```
