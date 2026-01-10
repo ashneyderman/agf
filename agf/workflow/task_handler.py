@@ -16,6 +16,7 @@ from agf.agent.base import AgentConfig, AgentResult, ModelType
 from agf.agent.models import CommandTemplate
 from agf.config.models import EffectiveConfig
 from agf.git_repo import mk_worktree
+from agf.installer import Installer
 from agf.task_manager import TaskManager
 from agf.task_manager.models import Task, TaskStatus, Worktree
 
@@ -266,6 +267,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="plan",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -289,6 +291,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="chore",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -312,6 +315,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="feature",
             params=[worktree.worktree_id or task.task_id, task.description],
             model=ModelType.THINKING,
@@ -336,6 +340,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="implement",
             params=[f"@{spec_path}"],
             model=ModelType.STANDARD,
@@ -359,6 +364,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="create-commit",
             params=[],
             model=ModelType.STANDARD,
@@ -382,6 +388,7 @@ class WorkflowTaskHandler:
         """
         worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
             prompt="empty-commit",
             params=[task.task_id, task.description],
             model=ModelType.STANDARD,
@@ -432,6 +439,14 @@ class WorkflowTaskHandler:
         try:
             # Initialize worktree
             worktree_path = self._initialize_worktree(worktree)
+
+            # Set worktree directory path for installer
+            worktree.directory_path = worktree_path
+
+            # Install AGF commands to worktree
+            installer = Installer(self.config, worktree)
+            copied_files = installer.install_commands()
+            self._log(f"Installed {len(copied_files)} command files to worktree")
 
             # Update task status to IN_PROGRESS
             self.task_manager.update_task_status(

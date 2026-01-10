@@ -185,3 +185,25 @@ def test_cli_config_branch_prefix_custom_value(tmp_path):
     )
 
     assert config.branch_prefix == "custom-prefix"
+
+
+def test_cli_config_commands_namespace_default(tmp_path):
+    """Test that commands_namespace defaults to None."""
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.touch()
+
+    config = CLIConfig(tasks_file=tasks_file, project_dir=tmp_path)
+
+    assert config.commands_namespace is None
+
+
+def test_cli_config_commands_namespace_custom_value(tmp_path):
+    """Test that custom commands_namespace value is preserved."""
+    tasks_file = tmp_path / "tasks.md"
+    tasks_file.touch()
+
+    config = CLIConfig(
+        tasks_file=tasks_file, project_dir=tmp_path, commands_namespace="custom-ns"
+    )
+
+    assert config.commands_namespace == "custom-ns"

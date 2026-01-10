@@ -335,6 +335,12 @@ def validate_project_dir(
     help="Override the branch name prefix (default: uses USER environment variable)",
 )
 @click.option(
+    "--commands-namespace",
+    type=str,
+    default=None,
+    help="Override the commands namespace (default: agf)",
+)
+@click.option(
     "--testing",
     is_flag=True,
     default=False,
@@ -350,6 +356,7 @@ def main(
     agent: str | None,
     model_type: str | None,
     branch_prefix: str | None,
+    commands_namespace: str | None,
     testing: bool,
 ) -> None:
     """Process tasks from a task list continuously or on-demand.
@@ -399,6 +406,7 @@ def main(
         agent=agent,
         model_type=model_type,
         branch_prefix=branch_prefix,
+        commands_namespace=commands_namespace,
         testing=testing,
     )
 
@@ -416,6 +424,7 @@ def main(
     log(f"Agent: {effective_config.agent}")
     log(f"Model type: {effective_config.model_type}")
     log(f"Branch prefix: {effective_config.branch_prefix or 'USER env var'}")
+    log(f"Commands namespace: {effective_config.commands_namespace}")
 
     # Initialize TaskManager
     try:

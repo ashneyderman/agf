@@ -151,6 +151,11 @@ def merge_configs(agf_config: AGFConfig, cli_config: CLIConfig) -> EffectiveConf
         cli_config.branch_prefix if cli_config.branch_prefix is not None else agf_config.branch_prefix
     )
 
+    # Apply precedence for commands_namespace: CLI > AGF config
+    resolved_commands_namespace = (
+        cli_config.commands_namespace if cli_config.commands_namespace is not None else agf_config.commands_namespace
+    )
+
     return EffectiveConfig(
         # From AGFConfig
         worktrees=agf_config.worktrees,
@@ -168,4 +173,5 @@ def merge_configs(agf_config: AGFConfig, cli_config: CLIConfig) -> EffectiveConf
         agent=resolved_agent,
         model_type=resolved_model_type,
         branch_prefix=resolved_branch_prefix,
+        commands_namespace=resolved_commands_namespace,
     )
