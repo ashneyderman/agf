@@ -397,6 +397,30 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.json_output
 
+    def _create_github_pr(self, worktree: Worktree, task: Task) -> str:
+        """Execute the create-github-pr prompt and return PR view information.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            String containing the output of gh pr view command
+
+        Raises:
+            Exception: If agent execution fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
+            prompt="create-github-pr",
+            params=[worktree.worktree_id or task.task_id],
+            model=ModelType.STANDARD,
+            json_output=False,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.output.strip()
+
     def _get_task_type(self, task: Task) -> str:
         """Detect the task type from task tags.
 
@@ -412,6 +436,21 @@ class WorkflowTaskHandler:
             if tag in valid_types:
                 return tag
         return "plan"
+
+    def _all_worktree_tasks_completed(self, worktree_name: str) -> bool:
+        """Check if all tasks in the worktree are completed.
+
+        Args:
+            worktree_name: Name of the worktree to check
+
+        Returns:
+            True if all tasks in the worktree are COMPLETED, False otherwise.
+            Returns False if worktree is None or has no tasks.
+        """
+        worktree = self.task_manager.get_worktree(worktree_name)
+        if worktree is None or not worktree.tasks:
+            return False
+        return all(task.status == TaskStatus.COMPLETED for task in worktree.tasks)
 
     def handle_task(self, worktree: Worktree, task: Task) -> bool:
         """Handle complete task execution workflow with SDLC phases.
@@ -511,6 +550,19 @@ class WorkflowTaskHandler:
                 commit_sha=commit_sha,
             )
             self._log(f"Task {task.task_id} completed successfully")
+
+            # Phase 4: Auto-create GitHub PR if all tasks are completed and not in testing mode
+            if not self.config.testing and self._all_worktree_tasks_completed(
+                worktree.worktree_name
+            ):
+                self._log("All worktree tasks completed - creating GitHub PR")
+                try:
+                    pr_result = self._create_github_pr(worktree, task)
+                    self._log(f"GitHub PR creation result: {pr_result}")
+                except Exception as pr_error:
+                    # Log error but don't fail the task (it's already completed)
+                    self._log(f"Error creating GitHub PR: {str(pr_error)}")
+
             return True
 
         except Exception as e:

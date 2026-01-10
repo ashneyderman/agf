@@ -738,6 +738,86 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.json_output is True
 
     @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_github_pr_success(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful GitHub PR creation."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="https://github.com/owner/repo/pull/123\n\nPR #123: agf-027 - Add create-github-pr wrapper\n",
+            exit_code=0,
+            duration_seconds=8.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_github_pr(sample_worktree, sample_task)
+
+        # Verify result (should be stripped)
+        assert result == "https://github.com/owner/repo/pull/123\n\nPR #123: agf-027 - Add create-github-pr wrapper"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "create-github-pr"
+        assert command_template.params == ["abc123"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_create_github_pr_uses_worktree_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test that create_github_pr uses worktree_id when available."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-027")
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="https://github.com/owner/repo/pull/456\n\nPR #456: agf-027 - Feature implementation\n",
+            exit_code=0,
+            duration_seconds=8.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._create_github_pr(worktree_with_id, sample_task)
+
+        # Verify result
+        assert result == "https://github.com/owner/repo/pull/456\n\nPR #456: agf-027 - Feature implementation"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template uses worktree_id
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "create-github-pr"
+        assert command_template.params == ["agf-027"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
     def test_run_plan_fallback_to_task_id(
         self,
         mock_agent_runner,
@@ -981,6 +1061,25 @@ class TestWorkflowTaskHandlerSDLCFlow:
             commit_result,
         ]
 
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="feat01",
+                    description="Add user authentication",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="feat02",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
             result = handler.handle_task(sample_worktree, feature_task)
@@ -1057,6 +1156,25 @@ class TestWorkflowTaskHandlerSDLCFlow:
             commit_result,
         ]
 
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="chore1",
+                    description="Update dependencies",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="chore2",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
             result = handler.handle_task(sample_worktree, chore_task)
@@ -1127,6 +1245,25 @@ class TestWorkflowTaskHandlerSDLCFlow:
             commit_result,
         ]
 
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="plan01",
+                    description="Design authentication system",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="plan02",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
             result = handler.handle_task(sample_worktree, plan_task)
@@ -1196,6 +1333,25 @@ class TestWorkflowTaskHandlerSDLCFlow:
             implement_result,
             commit_result,
         ]
+
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="inval1",
+                    description="Task without type tag",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="inval2",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
 
         # Mock worktree doesn't exist yet
         with patch("os.path.exists", return_value=False):
@@ -1590,3 +1746,334 @@ class TestWorkflowTaskHandlerTestingMode:
         call_args = mock_agent_runner.run_command.call_args
         command_template = call_args[1]["command_template"]
         assert command_template.params == ["abc123", "Test task description"]
+
+
+class TestWorkflowTaskHandlerPRCreation:
+    """Test PR creation helper and auto-PR creation functionality."""
+
+    def test_all_worktree_tasks_completed_true(self, mock_config, mock_task_manager):
+        """Test all tasks have COMPLETED status."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with all completed tasks
+        all_completed_worktree = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(task_id="task01", description="Task 1", status=TaskStatus.COMPLETED),
+                Task(task_id="task02", description="Task 2", status=TaskStatus.COMPLETED),
+                Task(task_id="task03", description="Task 3", status=TaskStatus.COMPLETED),
+            ],
+        )
+
+        # Mock task_manager to return the worktree
+        mock_task_manager.get_worktree.return_value = all_completed_worktree
+
+        # Verify returns True
+        assert handler._all_worktree_tasks_completed("test-feature") is True
+
+    def test_all_worktree_tasks_completed_false_mixed_status(
+        self, mock_config, mock_task_manager
+    ):
+        """Test some tasks not completed."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with mixed status tasks
+        mixed_status_worktree = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(task_id="task01", description="Task 1", status=TaskStatus.COMPLETED),
+                Task(
+                    task_id="task02",
+                    description="Task 2",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+                Task(task_id="task03", description="Task 3", status=TaskStatus.COMPLETED),
+            ],
+        )
+
+        # Mock task_manager to return the worktree
+        mock_task_manager.get_worktree.return_value = mixed_status_worktree
+
+        # Verify returns False
+        assert handler._all_worktree_tasks_completed("test-feature") is False
+
+    def test_all_worktree_tasks_completed_empty_worktree(
+        self, mock_config, mock_task_manager
+    ):
+        """Test worktree with no tasks returns False."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with no tasks
+        empty_worktree = Worktree(worktree_name="test-feature", tasks=[])
+
+        # Mock task_manager to return the empty worktree
+        mock_task_manager.get_worktree.return_value = empty_worktree
+
+        # Verify returns False
+        assert handler._all_worktree_tasks_completed("test-feature") is False
+
+    def test_all_worktree_tasks_completed_worktree_not_found(
+        self, mock_config, mock_task_manager
+    ):
+        """Test worktree doesn't exist returns False."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock task_manager to return None
+        mock_task_manager.get_worktree.return_value = None
+
+        # Verify returns False
+        assert handler._all_worktree_tasks_completed("nonexistent") is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_creates_pr_when_all_tasks_completed(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test PR creation is triggered when all tasks are completed."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with feature tag task
+        sample_task.tags = ["feature"]
+        worktree = Worktree(worktree_name="test-feature", tasks=[sample_task])
+
+        # Mock successful agent execution results for all phases
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-feature-test.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={"commit_sha": "abc123def456"},
+        )
+        pr_result = AgentResult(
+            success=True,
+            output="PR created: https://github.com/owner/repo/pull/123",
+            exit_code=0,
+            duration_seconds=8.0,
+            agent_name="claude-code",
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_command.side_effect = [
+            feature_result,
+            implement_result,
+            commit_result,
+            pr_result,
+        ]
+
+        # Mock task_manager.get_worktree to return worktree with all tasks completed
+        worktree_with_completed_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="abc123",
+                    description="Test task description",
+                    status=TaskStatus.COMPLETED,
+                )
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_completed_tasks
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(worktree, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called 4 times (feature, implement, commit, pr)
+        assert mock_agent_runner.run_command.call_count == 4
+
+        # Verify last call was create-github-pr
+        last_call = mock_agent_runner.run_command.call_args_list[-1]
+        command_template = last_call[1]["command_template"]
+        assert command_template.prompt == "create-github-pr"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_skips_pr_in_testing_mode(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test PR creation is skipped when testing mode is enabled."""
+        # Create config with testing=True
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                )
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"),
+            project_dir=Path("/tmp/project"),
+            testing=True,
+        )
+        config_with_testing = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=True,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config_with_testing, mock_task_manager)
+
+        # Mock successful empty commit execution
+        empty_commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=3.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "test123abc",
+                "commit_message": "test commit (task: abc123)",
+            },
+        )
+        mock_agent_runner.run_command.return_value = empty_commit_result
+
+        # Mock task_manager.get_worktree to return worktree with all tasks completed
+        worktree_with_completed_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="abc123",
+                    description="Test task description",
+                    status=TaskStatus.COMPLETED,
+                )
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_completed_tasks
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called exactly once (only empty-commit, no PR creation)
+        assert mock_agent_runner.run_command.call_count == 1
+        call_args = mock_agent_runner.run_command.call_args
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "empty-commit"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_skips_pr_when_tasks_remaining(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test PR creation is skipped when some tasks are not completed."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with feature tag task
+        sample_task.tags = ["feature"]
+        worktree = Worktree(worktree_name="test-feature", tasks=[sample_task])
+
+        # Mock successful agent execution results for all phases
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+            json_output={"path": "specs/abc123-feature-test.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={"commit_sha": "abc123def456"},
+        )
+
+        # Set up mock to return different results for each call
+        mock_agent_runner.run_command.side_effect = [
+            feature_result,
+            implement_result,
+            commit_result,
+        ]
+
+        # Mock task_manager.get_worktree to return worktree with some NOT_STARTED tasks
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="abc123",
+                    description="Test task description",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="def456",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(worktree, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called 3 times (feature, implement, commit - no PR)
+        assert mock_agent_runner.run_command.call_count == 3
+
+        # Verify last call was create-commit, not create-github-pr
+        last_call = mock_agent_runner.run_command.call_args_list[-1]
+        command_template = last_call[1]["command_template"]
+        assert command_template.prompt == "create-commit"
