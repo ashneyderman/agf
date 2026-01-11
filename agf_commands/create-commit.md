@@ -15,7 +15,7 @@ Create git commit for all the uncommitted changes in the repository.
 
 # Output Format
 
-IMPORTANT: Return a JSON object with this structure:
+IMPORTANT: Return JSON object with this structure:
 
 ```json
 {
