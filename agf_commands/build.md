@@ -3,8 +3,8 @@
 Implement a task directly without creating a plan first.
 
 ## Variables
-adw_id: $1
-task_description: $2
+
+prompt: $1
 
 ## Instructions
 
@@ -13,10 +13,12 @@ task_description: $2
 3. **Implement Solution**: Think hard and then directly implement the solution for the task
 4. **Validate Work**: Ensure the implementation is complete and working
 5. **Report Results**: Summarize what was done
+6. **DO NOT**: Commit your changes
 
 ## Setup Phase
 
 Before implementing the task:
+
 - Execute the prime command to understand the codebase structure
 - Read relevant documentation files (README.md, etc.)
 - Understand the existing patterns and conventions
@@ -31,7 +33,7 @@ Before implementing the task:
 
 ## Task Description
 
-task_description
+<prompt>
 
 ## Expected Actions
 
@@ -43,6 +45,7 @@ task_description
 ## Report
 
 After completing the implementation:
+
 - Summarize the work done in clear bullet points
 - List all files created or modified
 - Report the total lines changed with `git diff --stat`
