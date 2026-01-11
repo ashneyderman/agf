@@ -452,10 +452,10 @@ class WorkflowTaskHandler:
             task: Task object containing tags
 
         Returns:
-            Task type string ("chore", "feature", or "plan").
+            Task type string ("chore", "feature", "plan", or "build").
             Defaults to "plan" if no valid task type tag is found.
         """
-        valid_types = ["chore", "feature", "plan"]
+        valid_types = ["chore", "feature", "plan", "build"]
         for tag in task.tags:
             if tag in valid_types:
                 return tag
@@ -483,10 +483,11 @@ class WorkflowTaskHandler:
         1. Initialize or validate worktree
         2. Update task status to IN_PROGRESS
         3. If testing mode: create empty commit and return
-        4. Otherwise: Detect task type and run planning phase (plan/chore/feature)
-        5. Run implementation phase
-        6. Run commit phase
-        7. Update task status to COMPLETED with commit SHA
+        4. Otherwise: Detect task type and run appropriate workflow:
+           - For "build" tasks: run build phase -> commit phase
+           - For other tasks: run planning phase (plan/chore/feature) -> implementation phase -> commit phase
+        5. Update task status to COMPLETED with commit SHA
+        6. Auto-create GitHub PR if all tasks completed
 
         Args:
             worktree: Worktree object containing worktree metadata
@@ -540,31 +541,47 @@ class WorkflowTaskHandler:
             # Detect task type
             task_type = self._get_task_type(task)
 
-            # Phase 1: Planning (run appropriate planning method based on task type)
-            try:
-                if task_type == "plan":
-                    spec_path = self._run_plan(worktree, task)
-                elif task_type == "chore":
-                    spec_path = self._run_chore(worktree, task)
-                elif task_type == "feature":
-                    spec_path = self._run_feature(worktree, task)
-                else:
-                    raise ValueError(f"Unknown task type: {task_type}")
-            except Exception as e:
-                raise Exception(f"Planning phase failed: {str(e)}") from e
+            # Execute workflow based on task type
+            if task_type == "build":
+                # Build workflow: run build phase -> commit phase
+                try:
+                    implementation_summary = self._run_build(worktree, task)
+                except Exception as e:
+                    raise Exception(f"Build phase failed: {str(e)}") from e
 
-            # Phase 2: Implementation
-            try:
-                implementation_summary = self._run_implement(worktree, task, spec_path)
-            except Exception as e:
-                raise Exception(f"Implementation phase failed: {str(e)}") from e
+                # Phase 3: Commit
+                try:
+                    commit_info = self._create_commit(worktree, task)
+                    commit_sha = commit_info.get("commit_sha")
+                except Exception as e:
+                    raise Exception(f"Commit phase failed: {str(e)}") from e
+            else:
+                # Standard workflow: run planning phase -> implementation phase -> commit phase
+                # Phase 1: Planning (run appropriate planning method based on task type)
+                try:
+                    if task_type == "plan":
+                        spec_path = self._run_plan(worktree, task)
+                    elif task_type == "chore":
+                        spec_path = self._run_chore(worktree, task)
+                    elif task_type == "feature":
+                        spec_path = self._run_feature(worktree, task)
+                    else:
+                        raise ValueError(f"Unknown task type: {task_type}")
+                except Exception as e:
+                    raise Exception(f"Planning phase failed: {str(e)}") from e
 
-            # Phase 3: Commit
-            try:
-                commit_info = self._create_commit(worktree, task)
-                commit_sha = commit_info.get("commit_sha")
-            except Exception as e:
-                raise Exception(f"Commit phase failed: {str(e)}") from e
+                # Phase 2: Implementation
+                try:
+                    implementation_summary = self._run_implement(worktree, task, spec_path)
+                except Exception as e:
+                    raise Exception(f"Implementation phase failed: {str(e)}") from e
+
+                # Phase 3: Commit
+                try:
+                    commit_info = self._create_commit(worktree, task)
+                    commit_sha = commit_info.get("commit_sha")
+                except Exception as e:
+                    raise Exception(f"Commit phase failed: {str(e)}") from e
 
             # Update task status to COMPLETED
             self.task_manager.update_task_status(
