@@ -27,6 +27,10 @@ model-type: standard
 # Can be overridden with --branch-prefix CLI option
 # branch-prefix: my-team
 
+# Commands namespace used to separate AGF commands to avoid nomae collisions.
+# Can be overridden with --commands-namespace CLI option
+# commands_namespace: agf
+
 # Agent-specific model mappings
 # Maps abstract model types (thinking, standard, light) to concrete model names
 agents:
@@ -38,8 +42,8 @@ agents:
     thinking: github-copilot/claude-opus-4.5
     standard: github-copilot/claude-sonnet-4.5
     light: github-copilot/claude-haiku-4.5
-  # Example: Add custom agent with model mappings
-  # custom-agent:
-  #   thinking: custom-thinking-model
-  #   standard: custom-standard-model
-  #   light: custom-light-model
+# Example: Add custom agent with model mappings
+# custom-agent:
+#   thinking: custom-thinking-model
+#   standard: custom-standard-model
+#   light: custom-light-model
