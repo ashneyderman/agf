@@ -7,7 +7,6 @@ execution by managing git worktrees, executing agents, and tracking task status.
 import os
 import os.path
 from datetime import datetime
-from imaplib import Commands
 
 from git import Repo
 
@@ -545,7 +544,7 @@ class WorkflowTaskHandler:
             if task_type == "build":
                 # Build workflow: run build phase -> commit phase
                 try:
-                    implementation_summary = self._run_build(worktree, task)
+                    self._run_build(worktree, task)
                 except Exception as e:
                     raise Exception(f"Build phase failed: {str(e)}") from e
 
@@ -572,7 +571,7 @@ class WorkflowTaskHandler:
 
                 # Phase 2: Implementation
                 try:
-                    implementation_summary = self._run_implement(worktree, task, spec_path)
+                    self._run_implement(worktree, task, spec_path)
                 except Exception as e:
                     raise Exception(f"Implementation phase failed: {str(e)}") from e
 
