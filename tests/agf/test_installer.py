@@ -1,6 +1,4 @@
 import pytest
-import os
-import time
 from pathlib import Path
 
 from agf.installer import Installer
@@ -115,228 +113,222 @@ class TestInstallerProperties:
 class TestInstallerPathResolution:
     """Tests for path resolution methods"""
 
-    def test_get_agf_commands_source_dir_returns_valid_path(self, mock_effective_config, mock_worktree):
-        """Test that _get_agf_commands_source_dir returns a valid path"""
+    def test_get_agf_config_source_dir_returns_valid_path(self, mock_effective_config, mock_worktree):
+        """Test that _get_agf_config_source_dir returns a valid path"""
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        result = installer._get_agf_commands_source_dir()
+        result = installer._get_agf_config_source_dir()
 
         assert isinstance(result, Path)
-        assert result.name == "agf_commands"
+        assert result.name == ".agf_config"
         assert result.exists()
         assert result.is_dir()
 
-    def test_get_target_commands_dir_for_claude_code(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _get_target_commands_dir returns correct path for claude-code"""
+
+class TestInstallerDirectoryCopy:
+    """Tests for directory copy logic"""
+
+    def test_copy_agf_config_creates_target_directory(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _copy_agf_config creates .agf directory"""
         mock_worktree.directory_path = str(tmp_path)
-        mock_effective_config.agent = "claude-code"
-        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        result = installer._get_target_commands_dir()
+        target_dir = tmp_path / ".agf"
+        assert not target_dir.exists()
 
-        assert isinstance(result, Path)
-        assert str(result) == str(tmp_path / ".claude" / "commands" / "agf")
+        installer._copy_agf_config()
 
-    def test_get_target_commands_dir_for_opencode(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _get_target_commands_dir returns correct path for opencode"""
+        assert target_dir.exists()
+        assert target_dir.is_dir()
+
+    def test_copy_agf_config_copies_directory_structure(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _copy_agf_config copies the directory structure correctly"""
         mock_worktree.directory_path = str(tmp_path)
-        mock_effective_config.agent = "opencode"
-        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        result = installer._get_target_commands_dir()
+        installer._copy_agf_config()
 
-        assert isinstance(result, Path)
-        assert str(result) == str(tmp_path / ".opencode" / "command" / "agf")
+        target_dir = tmp_path / ".agf"
+        assert (target_dir / "claude" / "commands").exists()
+        assert (target_dir / "opencode" / "commands").exists()
 
-    def test_get_target_commands_dir_with_custom_namespace(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _get_target_commands_dir uses custom namespace"""
+        # Check that some command files exist
+        claude_commands = list((target_dir / "claude" / "commands").glob("*.md"))
+        assert len(claude_commands) > 0
+
+        opencode_commands = list((target_dir / "opencode" / "commands").glob("*.md"))
+        assert len(opencode_commands) > 0
+
+    def test_copy_agf_config_replaces_existing_directory(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _copy_agf_config removes and replaces existing .agf directory"""
         mock_worktree.directory_path = str(tmp_path)
-        mock_effective_config.agent = "claude-code"
-        mock_effective_config.commands_namespace = "custom"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        result = installer._get_target_commands_dir()
+        # Create existing .agf directory with a marker file
+        target_dir = tmp_path / ".agf"
+        target_dir.mkdir()
+        marker_file = target_dir / "marker.txt"
+        marker_file.write_text("old content")
 
-        assert isinstance(result, Path)
-        assert str(result) == str(tmp_path / ".claude" / "commands" / "custom")
+        installer._copy_agf_config()
 
-    def test_get_target_commands_dir_raises_when_directory_path_is_none(self, mock_effective_config, mock_worktree):
-        """Test that _get_target_commands_dir raises ValueError when directory_path is None"""
+        # Marker file should be gone
+        assert not marker_file.exists()
+        # But new structure should be there
+        assert (target_dir / "claude" / "commands").exists()
+
+    def test_copy_agf_config_raises_when_directory_path_is_none(self, mock_effective_config, mock_worktree):
+        """Test that _copy_agf_config raises ValueError when directory_path is None"""
         mock_worktree.directory_path = None
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
         with pytest.raises(ValueError, match="Worktree directory_path cannot be None"):
-            installer._get_target_commands_dir()
+            installer._copy_agf_config()
 
 
-class TestInstallerFileComparison:
-    """Tests for file comparison logic"""
+class TestInstallerSymlinks:
+    """Tests for symlink creation logic"""
 
-    def test_is_file_outdated_when_target_does_not_exist(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _is_file_outdated returns True when target doesn't exist"""
-        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
-        source = tmp_path / "source.md"
-        source.write_text("content")
-        target = tmp_path / "target.md"
-
-        result = installer._is_file_outdated(source, target)
-
-        assert result is True
-
-    def test_is_file_outdated_when_source_is_newer(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _is_file_outdated returns True when source is newer than target"""
+    def test_create_command_symlinks_creates_claude_symlink(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _create_command_symlinks creates claude-code symlink"""
+        mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        # Create target first (older)
-        target = tmp_path / "target.md"
-        target.write_text("old content")
-        time.sleep(0.01)  # Ensure time difference
+        # First copy the config so the target exists
+        installer._copy_agf_config()
+        installer._create_command_symlinks()
 
-        # Create source later (newer)
-        source = tmp_path / "source.md"
-        source.write_text("new content")
+        symlink_path = tmp_path / ".claude" / "commands" / "agf"
+        assert symlink_path.is_symlink()
+        # Verify it points to the right place
+        assert symlink_path.resolve() == (tmp_path / ".agf" / "claude" / "commands").resolve()
 
-        result = installer._is_file_outdated(source, target)
-
-        assert result is True
-
-    def test_is_file_outdated_when_target_is_newer(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _is_file_outdated returns False when target is newer than source"""
+    def test_create_command_symlinks_creates_opencode_symlink(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _create_command_symlinks creates opencode symlink"""
+        mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        # Create source first (older)
-        source = tmp_path / "source.md"
-        source.write_text("content")
-        time.sleep(0.01)  # Ensure time difference
+        # First copy the config so the target exists
+        installer._copy_agf_config()
+        installer._create_command_symlinks()
 
-        # Create target later (newer)
-        target = tmp_path / "target.md"
-        target.write_text("content")
+        symlink_path = tmp_path / ".opencode" / "command" / "agf"
+        assert symlink_path.is_symlink()
+        # Verify it points to the right place
+        assert symlink_path.resolve() == (tmp_path / ".agf" / "opencode" / "commands").resolve()
 
-        result = installer._is_file_outdated(source, target)
-
-        assert result is False
-
-    def test_is_file_outdated_when_files_have_same_mtime(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _is_file_outdated returns False when files have same modification time"""
+    def test_create_command_symlinks_uses_custom_namespace(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _create_command_symlinks uses custom namespace"""
+        mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "custom"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        source = tmp_path / "source.md"
-        source.write_text("content")
+        installer._copy_agf_config()
+        installer._create_command_symlinks()
 
-        target = tmp_path / "target.md"
-        target.write_text("content")
+        claude_symlink = tmp_path / ".claude" / "commands" / "custom"
+        opencode_symlink = tmp_path / ".opencode" / "command" / "custom"
 
-        # Set same modification time
-        mtime = os.path.getmtime(source)
-        os.utime(target, (mtime, mtime))
+        assert claude_symlink.is_symlink()
+        assert opencode_symlink.is_symlink()
 
-        result = installer._is_file_outdated(source, target)
+    def test_create_command_symlinks_replaces_existing_symlink(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _create_command_symlinks replaces existing symlink"""
+        mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "agf"
+        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        assert result is False
+        # Create existing symlink pointing elsewhere
+        symlink_parent = tmp_path / ".claude" / "commands"
+        symlink_parent.mkdir(parents=True)
+        old_target = tmp_path / "old_target"
+        old_target.mkdir()
+        symlink_path = symlink_parent / "agf"
+        symlink_path.symlink_to(old_target)
+
+        # Copy config and create symlinks
+        installer._copy_agf_config()
+        installer._create_command_symlinks()
+
+        # Symlink should now point to new location
+        assert symlink_path.is_symlink()
+        assert symlink_path.resolve() == (tmp_path / ".agf" / "claude" / "commands").resolve()
+
+    def test_create_command_symlinks_raises_when_directory_path_is_none(self, mock_effective_config, mock_worktree):
+        """Test that _create_command_symlinks raises ValueError when directory_path is None"""
+        mock_worktree.directory_path = None
+        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
+
+        with pytest.raises(ValueError, match="Worktree directory_path cannot be None"):
+            installer._create_command_symlinks()
 
 
 class TestInstallerInstallCommands:
     """Tests for command installation"""
 
-    def test_install_commands_creates_target_directory(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands creates target directory if it doesn't exist"""
+    def test_install_commands_creates_agf_directory(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that install_commands creates .agf directory"""
         mock_worktree.directory_path = str(tmp_path)
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        target_dir = tmp_path / ".claude" / "commands" / "agf"
-        assert not target_dir.exists()
+        agf_dir = tmp_path / ".agf"
+        assert not agf_dir.exists()
 
         installer.install_commands()
 
-        assert target_dir.exists()
-        assert target_dir.is_dir()
+        assert agf_dir.exists()
+        assert agf_dir.is_dir()
 
-    def test_install_commands_copies_md_files(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands copies .md files from source to target"""
+    def test_install_commands_creates_symlinks(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that install_commands creates symlinks for both agents"""
         mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        target_dir = tmp_path / ".claude" / "commands" / "agf"
+        installer.install_commands()
 
-        result = installer.install_commands()
+        claude_symlink = tmp_path / ".claude" / "commands" / "agf"
+        opencode_symlink = tmp_path / ".opencode" / "command" / "agf"
 
-        # Should have copied multiple .md files
-        assert len(result) > 0
-        assert all(f.endswith(".md") for f in result)
+        assert claude_symlink.is_symlink()
+        assert opencode_symlink.is_symlink()
 
-        # Verify files exist in target
-        for filename in result:
-            assert (target_dir / filename).exists()
-
-    def test_install_commands_returns_copied_files(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands returns list of copied files"""
+    def test_install_commands_updates_gitignore(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that install_commands updates .gitignore with all entries"""
         mock_worktree.directory_path = str(tmp_path)
+        mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
-        result = installer.install_commands()
+        installer.install_commands()
 
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert all(isinstance(f, str) for f in result)
+        gitignore_path = tmp_path / ".gitignore"
+        assert gitignore_path.exists()
 
-    def test_install_commands_skips_up_to_date_files(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands skips files that are already up-to-date"""
+        content = gitignore_path.read_text()
+        assert ".agf/" in content
+        assert ".claude/commands/agf/" in content
+        assert ".opencode/command/agf/" in content
+
+    def test_install_commands_is_idempotent(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that install_commands can be run multiple times safely"""
         mock_worktree.directory_path = str(tmp_path)
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
         # First installation
-        result1 = installer.install_commands()
-        assert len(result1) > 0
-
-        # Second installation - should skip all files
-        result2 = installer.install_commands()
-        assert len(result2) == 0
-
-    def test_install_commands_updates_outdated_files(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands updates files when source is newer"""
-        mock_worktree.directory_path = str(tmp_path)
-        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
-
-        # First installation
-        result1 = installer.install_commands()
-        len(result1)
-
-        # Make source files appear newer by modifying one file
-        source_dir = installer._get_agf_commands_source_dir()
-        source_files = list(source_dir.glob("*.md"))
-        if source_files:
-            test_file = source_files[0]
-            # Touch the file to make it newer
-            test_file.touch()
-
-            # Second installation - should copy the touched file
-            result2 = installer.install_commands()
-            assert len(result2) >= 1
-            assert test_file.name in result2
-
-    def test_install_commands_preserves_timestamps(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that install_commands preserves file timestamps"""
-        mock_worktree.directory_path = str(tmp_path)
-        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
-
-        source_dir = installer._get_agf_commands_source_dir()
-        source_files = list(source_dir.glob("*.md"))
-
         installer.install_commands()
 
-        target_dir = installer._get_target_commands_dir()
+        # Get initial state
+        agf_dir = tmp_path / ".agf"
+        initial_files = list(agf_dir.rglob("*.md"))
 
-        # Check that at least one file has matching timestamp
-        for source_file in source_files[:1]:  # Check first file
-            target_file = target_dir / source_file.name
-            if target_file.exists():
-                source_mtime = os.path.getmtime(source_file)
-                target_mtime = os.path.getmtime(target_file)
-                # Allow small difference due to filesystem precision
-                assert abs(source_mtime - target_mtime) < 0.01
+        # Second installation
+        installer.install_commands()
+
+        # Should still have same structure
+        final_files = list(agf_dir.rglob("*.md"))
+        assert len(initial_files) == len(final_files)
 
     def test_install_commands_raises_when_directory_path_is_none(self, mock_effective_config, mock_worktree):
         """Test that install_commands raises ValueError when directory_path is None"""
@@ -363,10 +355,9 @@ class TestInstallerGitignore:
 
         assert gitignore_path.exists()
 
-    def test_ensure_gitignore_entry_adds_entry_for_claude_code(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _ensure_gitignore_entry adds correct entry for claude-code"""
+    def test_ensure_gitignore_entry_adds_all_entries(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _ensure_gitignore_entry adds all required entries"""
         mock_worktree.directory_path = str(tmp_path)
-        mock_effective_config.agent = "claude-code"
         mock_effective_config.commands_namespace = "agf"
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
@@ -374,23 +365,12 @@ class TestInstallerGitignore:
 
         gitignore_path = tmp_path / ".gitignore"
         content = gitignore_path.read_text()
+        assert ".agf/" in content
         assert ".claude/commands/agf/" in content
-
-    def test_ensure_gitignore_entry_adds_entry_for_opencode(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _ensure_gitignore_entry adds correct entry for opencode"""
-        mock_worktree.directory_path = str(tmp_path)
-        mock_effective_config.agent = "opencode"
-        mock_effective_config.commands_namespace = "agf"
-        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
-
-        installer.install_commands()
-
-        gitignore_path = tmp_path / ".gitignore"
-        content = gitignore_path.read_text()
         assert ".opencode/command/agf/" in content
 
-    def test_ensure_gitignore_entry_does_not_duplicate_entry(self, mock_effective_config, mock_worktree, tmp_path):
-        """Test that _ensure_gitignore_entry doesn't duplicate existing entry"""
+    def test_ensure_gitignore_entry_does_not_duplicate_entries(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _ensure_gitignore_entry doesn't duplicate existing entries"""
         mock_worktree.directory_path = str(tmp_path)
         installer = Installer(config=mock_effective_config, worktree=mock_worktree)
 
@@ -399,13 +379,13 @@ class TestInstallerGitignore:
 
         gitignore_path = tmp_path / ".gitignore"
         content1 = gitignore_path.read_text()
-        count1 = content1.count(".claude/commands/agf/")
+        count1 = content1.count(".agf/")
 
         # Second installation
         installer.install_commands()
 
         content2 = gitignore_path.read_text()
-        count2 = content2.count(".claude/commands/agf/")
+        count2 = content2.count(".agf/")
 
         # Should still have only one entry
         assert count1 == 1
@@ -418,13 +398,13 @@ class TestInstallerGitignore:
 
         # Pre-create .gitignore with entry without trailing slash
         gitignore_path = tmp_path / ".gitignore"
-        gitignore_path.write_text(".claude/commands/agf\n")
+        gitignore_path.write_text(".agf\n")
 
         installer.install_commands()
 
         content = gitignore_path.read_text()
         # Should not add duplicate
-        assert content.count(".claude/commands/agf") == 1
+        assert content.count(".agf") == 1
 
     def test_ensure_gitignore_entry_adds_newline_before_entry_if_needed(self, mock_effective_config, mock_worktree, tmp_path):
         """Test that _ensure_gitignore_entry adds newline before entry if file doesn't end with one"""
@@ -439,9 +419,9 @@ class TestInstallerGitignore:
 
         content = gitignore_path.read_text()
         lines = content.split("\n")
-        # Should have existing entry, new entry, and possibly empty string at end
+        # Should have existing entry and new entries
         assert "existing_entry" in lines
-        assert ".claude/commands/agf/" in lines
+        assert ".agf/" in lines
 
     def test_ensure_gitignore_entry_raises_when_directory_path_is_none(self, mock_effective_config, mock_worktree):
         """Test that _ensure_gitignore_entry raises ValueError when directory_path is None"""
@@ -450,3 +430,24 @@ class TestInstallerGitignore:
 
         with pytest.raises(ValueError, match="Worktree directory_path cannot be None"):
             installer._ensure_gitignore_entry()
+
+    def test_gitignore_has_entry_returns_true_for_existing_entry(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _gitignore_has_entry returns True for existing entry"""
+        mock_worktree.directory_path = str(tmp_path)
+        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
+
+        gitignore_path = tmp_path / ".gitignore"
+        gitignore_path.write_text(".agf/\n")
+
+        assert installer._gitignore_has_entry(gitignore_path, ".agf/")
+        assert installer._gitignore_has_entry(gitignore_path, ".agf")
+
+    def test_gitignore_has_entry_returns_false_for_missing_entry(self, mock_effective_config, mock_worktree, tmp_path):
+        """Test that _gitignore_has_entry returns False for missing entry"""
+        mock_worktree.directory_path = str(tmp_path)
+        installer = Installer(config=mock_effective_config, worktree=mock_worktree)
+
+        gitignore_path = tmp_path / ".gitignore"
+        gitignore_path.write_text("other_entry/\n")
+
+        assert not installer._gitignore_has_entry(gitignore_path, ".agf/")
