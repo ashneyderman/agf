@@ -650,6 +650,86 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.json_output is False
 
     @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_build_success(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+        sample_task,
+    ):
+        """Test successful build execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="- Implemented task\n- Ran tests successfully\n- All checks passed\n",
+            exit_code=0,
+            duration_seconds=15.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_build(sample_worktree, sample_task)
+
+        # Verify result (should be stripped)
+        assert result == "- Implemented task\n- Ran tests successfully\n- All checks passed"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "build"
+        assert command_template.params == ["abc123", "Test task description"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_build_uses_worktree_id(
+        self,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test that build uses worktree_id when available."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create worktree with worktree_id
+        worktree_with_id = Worktree(worktree_name="test-feature", worktree_id="agf-028")
+
+        # Mock successful agent execution with string output
+        mock_result = AgentResult(
+            success=True,
+            output="- Completed build task\n- Tests passed\n",
+            exit_code=0,
+            duration_seconds=12.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_build(worktree_with_id, sample_task)
+
+        # Verify result
+        assert result == "- Completed build task\n- Tests passed"
+
+        # Verify AgentRunner was called with correct parameters
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+
+        # Verify the command template uses worktree_id
+        command_template = call_args[1]["command_template"]
+        assert command_template.prompt == "build"
+        assert command_template.params == ["agf-028", "Test task description"]
+        assert command_template.model == "standard"
+        assert command_template.json_output is False
+
+    @patch("agf.workflow.task_handler.AgentRunner")
     def test_create_commit_success(
         self,
         mock_agent_runner,

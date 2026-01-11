@@ -349,6 +349,30 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree_path, command_template)
         return result.output.strip()
 
+    def _run_build(self, worktree: Worktree, task: Task) -> str:
+        """Execute the build prompt and return the implementation summary.
+
+        Args:
+            worktree: Worktree object containing worktree metadata
+            task: Task object containing task metadata
+
+        Returns:
+            Summary of the implementation work completed
+
+        Raises:
+            Exception: If agent execution fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+        command_template = CommandTemplate(
+            namespace=self.config.commands_namespace,
+            prompt="build",
+            params=[worktree.worktree_id or task.task_id, task.description],
+            model=ModelType.STANDARD,
+            json_output=False,
+        )
+        result = self._execute_command(worktree_path, command_template)
+        return result.output.strip()
+
     def _create_commit(self, worktree: Worktree, task: Task) -> dict:
         """Execute the create-commit prompt and return commit information.
 
