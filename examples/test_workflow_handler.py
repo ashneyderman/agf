@@ -18,7 +18,7 @@ from pathlib import Path
 
 from git import Repo
 
-from agf.config.models import AGFConfig, AgentModelConfig, CLIConfig, EffectiveConfig
+from agf.config.models import AGFConfig, AgentModelConfig, CLIConfig
 from agf.config import merge_configs
 from agf.task_manager import TaskManager
 from agf.task_manager.markdown_source import MarkdownTaskSource

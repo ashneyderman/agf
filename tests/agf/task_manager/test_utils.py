@@ -1,4 +1,3 @@
-import pytest
 from agf.task_manager.utils import generate_short_id
 
 

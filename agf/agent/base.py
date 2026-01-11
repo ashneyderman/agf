@@ -140,7 +140,6 @@ class ModelMapping:
             >>> ModelMapping.list_agents()
             ['claude-code', 'opencode']
         """
-        from agf.config.models import AGFConfig
 
         for agent_name, agent_config in config.agents.items():
             cls.register_agent(

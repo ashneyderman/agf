@@ -10,7 +10,6 @@ Configuration precedence: CLI Arguments > AGF Config File > Hardcoded Defaults
 """
 
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 

@@ -1,6 +1,5 @@
 """Tests for the agent base module."""
 
-import pytest
 
 from agf.agent.base import AgentConfig, AgentResult, ModelMapping
 

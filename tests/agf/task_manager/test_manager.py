@@ -1,10 +1,7 @@
 import pytest
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from agf.task_manager.manager import TaskManager
 from agf.task_manager.models import Task, Worktree, TaskStatus
-from agf.task_manager.markdown_source import MarkdownTaskSource
 
 
 @pytest.fixture
@@ -80,8 +77,8 @@ class TestTaskManagerSingleton:
         mock2 = Mock()
         mock2.list_worktrees.return_value = []
 
-        manager1 = TaskManager(mock1)
-        manager2 = TaskManager(mock2)
+        TaskManager(mock1)
+        TaskManager(mock2)
 
         # Should only call list_worktrees on first initialization
         assert mock1.list_worktrees.called

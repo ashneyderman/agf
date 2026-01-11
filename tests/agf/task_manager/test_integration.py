@@ -143,7 +143,7 @@ class TestEndToEndWorkflow:
             assert len(worktrees[0].tasks) == 2
 
             # All tasks should have task_ids written to file
-            content = temp_path.read_text()
+            temp_path.read_text()
 
             # Verify by re-reading with a fresh source
             new_source = MarkdownTaskSource(str(temp_path))

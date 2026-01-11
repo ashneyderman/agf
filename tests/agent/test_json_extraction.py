@@ -1,9 +1,6 @@
 """Tests for JSON extraction functionality in agents."""
 
-import json
-from pathlib import Path
 
-import pytest
 
 from agf.agent.base import AgentConfig, AgentResult
 from agf.agent.claude_code import ClaudeCodeAgent

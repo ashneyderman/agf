@@ -1,6 +1,5 @@
 """Tests for agent base classes and ModelMapping."""
 
-import pytest
 
 from agf.agent.base import ModelMapping
 from agf.config import AGFConfig, AgentModelConfig
