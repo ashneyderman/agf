@@ -125,11 +125,14 @@ class OpenCodeAgent:
         # Format prompt with namespace and params
         # Escape double and single quotes in params to prevent command parsing issues
         params_str = (
-            " ".join(f'"{str(p).replace('"', '\\"').replace("'", "\\'")}"' for p in command_template.params)
+            " ".join(
+                f'"{str(p).replace('"', '\\"').replace("'", "\\'")}"'
+                for p in command_template.params
+            )
             if command_template.params
             else ""
         )
-        prompt = f"/{command_template.namespace}:{command_template.prompt} {params_str}".rstrip()
+        prompt = f"/{command_template.namespace}/{command_template.prompt} {params_str}".rstrip()
 
         # Execute using the existing run method with merged config
         return self.run(prompt, config)

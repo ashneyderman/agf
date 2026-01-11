@@ -289,7 +289,7 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify parameters are wrapped in double quotes
-        assert '/test:command "param1" "param2"' == prompt
+        assert '/test/command "param1" "param2"' == prompt
 
     @patch("agf.agent.opencode.shutil.which")
     @patch("agf.agent.opencode.subprocess.run")
@@ -324,7 +324,7 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify parameters with spaces are wrapped in double quotes
-        assert '/test:command "param with spaces" "another param"' == prompt
+        assert '/test/command "param with spaces" "another param"' == prompt
 
     @patch("agf.agent.opencode.shutil.which")
     @patch("agf.agent.opencode.subprocess.run")
@@ -359,7 +359,7 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify double quotes are escaped and parameters are wrapped in double quotes
-        assert '/test:command "param with \\"quotes\\"" "normal"' == prompt
+        assert '/test/command "param with \\"quotes\\"" "normal"' == prompt
 
     @patch("agf.agent.opencode.shutil.which")
     @patch("agf.agent.opencode.subprocess.run")
@@ -394,7 +394,7 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify single quotes are escaped and parameters are wrapped in double quotes
-        assert r'/test:command "param with \'single quotes\'" "normal"' == prompt
+        assert r'/test/command "param with \'single quotes\'" "normal"' == prompt
 
     @patch("agf.agent.opencode.shutil.which")
     @patch("agf.agent.opencode.subprocess.run")
@@ -429,7 +429,7 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify both quote types are escaped and parameters are wrapped in double quotes
-        assert r'/test:command "param with \"double\" and \'single\' quotes"' == prompt
+        assert r'/test/command "param with \"double\" and \'single\' quotes"' == prompt
 
     @patch("agf.agent.opencode.shutil.which")
     @patch("agf.agent.opencode.subprocess.run")
@@ -463,4 +463,4 @@ class TestOpenCodeAgent:
         prompt = called_cmd[run_idx + 1]
 
         # Verify no parameters are appended
-        assert '/test:command' == prompt
+        assert '/test/command' == prompt
