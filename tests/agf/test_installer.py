@@ -2,7 +2,6 @@ import pytest
 import os
 import time
 from pathlib import Path
-from unittest.mock import Mock
 
 from agf.installer import Installer
 from agf.config.models import EffectiveConfig, AgentModelConfig
@@ -303,7 +302,7 @@ class TestInstallerInstallCommands:
 
         # First installation
         result1 = installer.install_commands()
-        first_install_count = len(result1)
+        len(result1)
 
         # Make source files appear newer by modifying one file
         source_dir = installer._get_agf_commands_source_dir()

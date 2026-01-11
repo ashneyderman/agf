@@ -8,9 +8,8 @@ import subprocess
 import time
 from typing import Any
 
-from .base import Agent, AgentConfig, AgentResult, JSONValue, ModelMapping
+from .base import AgentConfig, AgentResult, JSONValue, ModelMapping
 from .exceptions import (
-    AgentExecutionError,
     AgentNotFoundError,
     AgentOutputParseError,
     AgentTimeoutError,

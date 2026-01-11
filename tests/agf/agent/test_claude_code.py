@@ -1,6 +1,5 @@
 """Tests for the Claude Code agent."""
 
-import json
 import subprocess
 from unittest.mock import MagicMock, patch
 

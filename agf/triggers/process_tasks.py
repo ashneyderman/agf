@@ -44,7 +44,7 @@ from agf.config import (
 )
 from agf.task_manager import TaskManager
 from agf.task_manager.markdown_source import MarkdownTaskSource
-from agf.task_manager.models import Task, TaskStatus, Worktree
+from agf.task_manager.models import Task, Worktree
 from agf.workflow import WorkflowTaskHandler
 
 
