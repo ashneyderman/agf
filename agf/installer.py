@@ -52,23 +52,44 @@ class Installer:
         """
         return self._worktree
 
-    def _get_agf_commands_source_dir(self) -> Path:
+    def _get_agf_config_source_dir(self) -> Path:
         """
-        Get the path to the AGF commands source directory.
+        Get the path to the AGF config source directory.
 
         Returns:
-            Path to the agf_commands directory in the AGF project
+            Path to the .agf_config directory in the AGF project
         """
         # __file__ points to agf/installer.py, so go up one level to agf package,
-        # then up one more level to the project root, then into agf_commands
-        return Path(__file__).parent.parent / "agf_commands"
+        # then up one more level to the project root, then into .agf_config
+        return Path(__file__).parent.parent / ".agf_config"
 
-    def _get_target_commands_dir(self) -> Path:
+    def _copy_agf_config(self) -> None:
         """
-        Get the target directory path for commands based on agent type and configuration.
+        Copy the entire .agf_config directory to the worktree's .agf directory.
 
-        Returns:
-            Path to the target commands directory in the worktree
+        Raises:
+            ValueError: If worktree directory_path is None
+        """
+        if self._worktree.directory_path is None:
+            raise ValueError("Worktree directory_path cannot be None")
+
+        source_dir = self._get_agf_config_source_dir()
+        worktree_path = Path(self._worktree.directory_path)
+        target_dir = worktree_path / ".agf"
+
+        # Remove existing .agf directory if it exists
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+
+        # Copy the entire directory structure
+        shutil.copytree(source_dir, target_dir)
+
+    def _create_command_symlinks(self) -> None:
+        """
+        Create symbolic links from agent command directories to .agf structure.
+
+        Creates symlinks for both claude-code and opencode agents, pointing their
+        command directories to the corresponding paths in .agf.
 
         Raises:
             ValueError: If worktree directory_path is None
@@ -77,84 +98,124 @@ class Installer:
             raise ValueError("Worktree directory_path cannot be None")
 
         worktree_path = Path(self._worktree.directory_path)
-        agent = self._config.agent
         namespace = self._config.commands_namespace
 
-        # Determine agent-specific directory structure
-        if agent == "claude-code":
-            agent_dir = ".claude/commands"
-        elif agent == "opencode":
-            agent_dir = ".opencode/command"
-        else:
-            # Default to claude-code structure for unknown agents
-            agent_dir = ".claude/commands"
+        # Define symlink mappings: (parent_dir, link_name, target_relative_path)
+        symlinks = [
+            (
+                worktree_path / ".claude" / "commands",
+                namespace,
+                "../../.agf/claude/commands"
+            ),
+            (
+                worktree_path / ".opencode" / "command",
+                namespace,
+                "../../.agf/opencode/commands"
+            ),
+        ]
 
-        return worktree_path / agent_dir / namespace
+        for parent_dir, link_name, target_path in symlinks:
+            # Create parent directory if it doesn't exist
+            parent_dir.mkdir(parents=True, exist_ok=True)
 
-    def _is_file_outdated(self, source_path: Path, target_path: Path) -> bool:
+            link_path = parent_dir / link_name
+
+            # Remove existing symlink if it exists
+            if link_path.is_symlink() or link_path.exists():
+                if link_path.is_symlink():
+                    link_path.unlink()
+                elif link_path.is_dir():
+                    shutil.rmtree(link_path)
+                else:
+                    link_path.unlink()
+
+            # Create the symlink using relative path
+            os.symlink(target_path, link_path)
+
+    def install_commands(self) -> None:
         """
-        Check if a target file is missing or outdated compared to the source.
+        Install AGF command prompts to the worktree using symlink-based approach.
 
-        Args:
-            source_path: Path to the source file
-            target_path: Path to the target file
-
-        Returns:
-            True if target doesn't exist or is older than source, False otherwise
-        """
-        # If target doesn't exist, it's outdated
-        if not target_path.exists():
-            return True
-
-        # Compare modification times - if source is newer, target is outdated
-        source_mtime = os.path.getmtime(source_path)
-        target_mtime = os.path.getmtime(target_path)
-
-        return source_mtime > target_mtime
-
-    def install_commands(self) -> list[str]:
-        """
-        Install AGF command prompts to the worktree's agent-specific commands directory.
-
-        This method synchronizes command files from the AGF source directory to the
-        worktree's commands directory, copying only files that are missing or outdated.
-
-        Returns:
-            List of filenames that were copied to the target directory
+        This method:
+        1. Copies the entire .agf_config directory to {worktree}/.agf
+        2. Creates symlinks from agent command directories to .agf structure
+        3. Updates .gitignore with all required entries
 
         Raises:
             ValueError: If worktree directory_path is None
         """
-        source_dir = self._get_agf_commands_source_dir()
-        target_dir = self._get_target_commands_dir()
+        # Copy the config directory
+        self._copy_agf_config()
 
-        # Create target directory if it doesn't exist
-        target_dir.mkdir(parents=True, exist_ok=True)
+        # Create symlinks for both agents
+        self._create_command_symlinks()
 
-        copied_files: list[str] = []
+        # Update gitignore with all entries
+        self._ensure_gitignore_entry()
 
-        # Iterate over all .md files in source directory
-        for source_file in source_dir.glob("*.md"):
-            target_file = target_dir / source_file.name
+    def _gitignore_has_entry(self, gitignore_path: Path, entry: str) -> bool:
+        """
+        Check if .gitignore contains the specified entry.
 
-            # Check if file needs to be copied
-            if self._is_file_outdated(source_file, target_file):
-                # Copy file, preserving timestamps
-                shutil.copy2(source_file, target_file)
-                copied_files.append(source_file.name)
+        Args:
+            gitignore_path: Path to the .gitignore file
+            entry: The gitignore entry to check for
 
-        # Update .gitignore after successful installation
-        if copied_files:
-            self._ensure_gitignore_entry()
+        Returns:
+            True if entry exists (with or without trailing slash), False otherwise
+        """
+        if not gitignore_path.exists():
+            return False
 
-        return copied_files
+        with open(gitignore_path, "r") as f:
+            existing_entries = {line.strip() for line in f}
+
+        # Normalize entry for comparison (with and without trailing slash)
+        entry_normalized = entry.rstrip("/")
+
+        # Check if entry already exists (in any form)
+        return any(
+            existing.rstrip("/") == entry_normalized
+            for existing in existing_entries
+        )
+
+    def _add_gitignore_entries(self, gitignore_path: Path, entries: list[str]) -> None:
+        """
+        Add multiple entries to .gitignore file.
+
+        Args:
+            gitignore_path: Path to the .gitignore file
+            entries: List of entries to add (duplicates will be skipped)
+        """
+        # Filter out entries that already exist
+        entries_to_add = [
+            entry for entry in entries
+            if not self._gitignore_has_entry(gitignore_path, entry)
+        ]
+
+        if not entries_to_add:
+            return
+
+        with open(gitignore_path, "a") as f:
+            # Add newline before entries if file exists and doesn't end with newline
+            if gitignore_path.exists() and gitignore_path.stat().st_size > 0:
+                with open(gitignore_path, "rb") as rf:
+                    rf.seek(-1, 2)  # Seek to last byte
+                    last_char = rf.read(1)
+                    if last_char != b"\n":
+                        f.write("\n")
+
+            # Add all entries
+            for entry in entries_to_add:
+                entry_with_slash = entry if entry.endswith("/") else entry + "/"
+                f.write(f"{entry_with_slash}\n")
 
     def _ensure_gitignore_entry(self) -> None:
         """
-        Ensure the agent-specific commands directory is listed in .gitignore.
+        Ensure all required directories are listed in .gitignore.
 
-        This method checks if the commands directory entry exists in the worktree's
-        .gitignore file and adds it if missing.
+        Adds entries for .agf/, .claude/commands/{namespace}/, and
+        .opencode/command/{namespace}/ to the worktree's .gitignore file.
 
         Raises:
             ValueError: If worktree directory_path is None
@@ -164,43 +225,13 @@ class Installer:
 
         worktree_path = Path(self._worktree.directory_path)
         gitignore_path = worktree_path / ".gitignore"
-
-        # Determine the entry to add based on agent type
-        agent = self._config.agent
         namespace = self._config.commands_namespace
 
-        if agent == "claude-code":
-            entry = f".claude/commands/{namespace}/"
-        elif agent == "opencode":
-            entry = f".opencode/command/{namespace}/"
-        else:
-            # Default to claude-code structure
-            entry = f".claude/commands/{namespace}/"
+        # Define all entries to add
+        entries = [
+            ".agf/",
+            f".claude/commands/{namespace}/",
+            f".opencode/command/{namespace}/",
+        ]
 
-        # Check if .gitignore exists and read its contents
-        existing_entries = set()
-        if gitignore_path.exists():
-            with open(gitignore_path, "r") as f:
-                existing_entries = {line.strip() for line in f}
-
-        # Normalize entry for comparison (with and without trailing slash)
-        entry_normalized = entry.rstrip("/")
-        entry_with_slash = entry if entry.endswith("/") else entry + "/"
-
-        # Check if entry already exists (in any form)
-        entry_exists = any(
-            existing.rstrip("/") == entry_normalized
-            for existing in existing_entries
-        )
-
-        # Add entry if it doesn't exist
-        if not entry_exists:
-            with open(gitignore_path, "a") as f:
-                # Add newline before entry if file exists and doesn't end with newline
-                if gitignore_path.stat().st_size > 0:
-                    with open(gitignore_path, "rb") as rf:
-                        rf.seek(-1, 2)  # Seek to last byte
-                        last_char = rf.read(1)
-                        if last_char != b"\n":
-                            f.write("\n")
-                f.write(f"{entry_with_slash}\n")
+        self._add_gitignore_entries(gitignore_path, entries)

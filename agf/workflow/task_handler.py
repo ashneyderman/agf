@@ -508,8 +508,8 @@ class WorkflowTaskHandler:
 
             # Install AGF commands to worktree
             installer = Installer(self.config, worktree)
-            copied_files = installer.install_commands()
-            self._log(f"Installed {len(copied_files)} command files to worktree")
+            installer.install_commands()
+            self._log("Installed AGF commands to worktree")
 
             # Update task status to IN_PROGRESS
             self.task_manager.update_task_status(
