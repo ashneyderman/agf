@@ -1,37 +1,49 @@
+---
+name: feature
+description: Create a comprehensive plan to implement a new feature
+params:
+  - name: agf_id
+    description: The unique identifier for this task (e.g., agf-001)
+    required: true
+  - name: prompt
+    description: The feature description to plan
+    required: true
+---
+
 # Feature Planning
 
-Create a plan to implement the feature using the specified markdown `Plan Format`. Research the codebase and create a thorough plan.
+Create a plan to implement the feature using the specified markdown Plan Format. Research the codebase and create a thorough plan.
 
-# Variables
+## Instructions
 
-agf_id: $1
-prompt: $2
+Extract parameters:
+- `agf_id` - The unique task identifier
+- `prompt` - The feature description
 
-# Instructions
+1. If `agf_id` or `prompt` is not provided, stop and ask the user to provide them
+2. Create a plan to implement the feature described in the `prompt`
+3. The plan should be comprehensive, well-designed, and follow existing patterns
+4. Create the plan in the `specs/` directory with filename: `<agf_id>-feature-<descriptive_name>.md`
+   - Replace `<descriptive_name>` with a short, descriptive name based on the `prompt` itself (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
+5. Research the codebase starting with `README.md`
+6. Replace every `<placeholder>` in the Plan Format with the requested value
+7. Use your reasoning model: THINK HARD about the feature requirements, design, and implementation approach
+8. Follow existing patterns and conventions in the codebase
+9. Design for extensibility and maintainability
 
-- If the agf_id or prompt is not provided, stop and ask the user to provide them.
-- Create a plan to implement the feature described in the <prompt>
-- The plan should be comprehensive, well-designed, and follow existing patterns
-- Create the plan in the `specs/` directory with filename: `<agf_id>-feature-<descriptive_name>.md`
-  - Replace `<descriptive_name>` with a short, descriptive name based on the <prompt> itself (e.g., "add-agent-logging", "implement-retry-logic", "create-workflow-api")
-- Research the codebase starting with `README.md`
-- Replace every <placeholder> in the `Plan Format` with the requested value
-- Use your reasoning model: THINK HARD about the feature requirements, design, and implementation approach
-- Follow existing patterns and conventions in the codebase
-- Design for extensibility and maintainability
+## Codebase Structure
 
-# Codebase Structure
+- Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines
 
-- Read: `README.md` for project overview and instructions (start here) to understand the project structure and guidelines.
-
-# Plan Format
+## Plan Format
 
 ```md
 # Feature: <feature name>
 
 ## Metadata
 
-agf_id: `<agf_id><descriptive_name>prompt: `{prompt}`
+agf_id: `<agf_id>`
+prompt: `<prompt>`
 
 ## Feature Description
 
@@ -115,11 +127,7 @@ Execute these commands to validate the feature is complete:
 <optional additional context, future considerations, or dependencies. If new libraries are needed, specify using `uv add`>
 ```
 
-# Feature
-
-Use the feature description from the <prompt> variable.
-
-# Output Format
+## Output Format
 
 IMPORTANT: Return a JSON object with this structure:
 
@@ -129,10 +137,10 @@ IMPORTANT: Return a JSON object with this structure:
 }
 ```
 
-## Example Output
+### Example Output
 
 ```json
 {
-  "path": "specs/agf-001-feature-start-worktree-api.md"
+  "path": "specs/agf-001-feature-user-authentication.md"
 }
 ```
