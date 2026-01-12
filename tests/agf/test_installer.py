@@ -150,14 +150,15 @@ class TestInstallerDirectoryCopy:
 
         target_dir = tmp_path / ".agf"
         assert (target_dir / "claude" / "commands").exists()
-        assert (target_dir / "opencode" / "commands").exists()
+        assert (target_dir / "opencode" / "skill").exists()
 
         # Check that some command files exist
         claude_commands = list((target_dir / "claude" / "commands").glob("*.md"))
         assert len(claude_commands) > 0
 
-        opencode_commands = list((target_dir / "opencode" / "commands").glob("*.md"))
-        assert len(opencode_commands) > 0
+        # OpenCode skills are stored as subdirectories with SKILL.md inside
+        opencode_skills = [d for d in (target_dir / "opencode" / "skill").iterdir() if d.is_dir()]
+        assert len(opencode_skills) > 0
 
     def test_copy_agf_config_replaces_existing_directory(self, mock_effective_config, mock_worktree, tmp_path):
         """Test that _copy_agf_config removes and replaces existing .agf directory"""
@@ -214,10 +215,10 @@ class TestInstallerSymlinks:
         installer._copy_agf_config()
         installer._create_command_symlinks()
 
-        symlink_path = tmp_path / ".opencode" / "command" / "agf"
+        symlink_path = tmp_path / ".opencode" / "skill" / "agf"
         assert symlink_path.is_symlink()
         # Verify it points to the right place
-        assert symlink_path.resolve() == (tmp_path / ".agf" / "opencode" / "commands").resolve()
+        assert symlink_path.resolve() == (tmp_path / ".agf" / "opencode" / "skill").resolve()
 
     def test_create_command_symlinks_uses_custom_namespace(self, mock_effective_config, mock_worktree, tmp_path):
         """Test that _create_command_symlinks uses custom namespace"""
@@ -229,7 +230,7 @@ class TestInstallerSymlinks:
         installer._create_command_symlinks()
 
         claude_symlink = tmp_path / ".claude" / "commands" / "custom"
-        opencode_symlink = tmp_path / ".opencode" / "command" / "custom"
+        opencode_symlink = tmp_path / ".opencode" / "skill" / "custom"
 
         assert claude_symlink.is_symlink()
         assert opencode_symlink.is_symlink()
@@ -290,7 +291,7 @@ class TestInstallerInstallCommands:
         installer.install_commands()
 
         claude_symlink = tmp_path / ".claude" / "commands" / "agf"
-        opencode_symlink = tmp_path / ".opencode" / "command" / "agf"
+        opencode_symlink = tmp_path / ".opencode" / "skill" / "agf"
 
         assert claude_symlink.is_symlink()
         assert opencode_symlink.is_symlink()
@@ -309,7 +310,7 @@ class TestInstallerInstallCommands:
         content = gitignore_path.read_text()
         assert ".agf/" in content
         assert ".claude/commands/agf/" in content
-        assert ".opencode/command/agf/" in content
+        assert ".opencode/skill/agf/" in content
 
     def test_install_commands_is_idempotent(self, mock_effective_config, mock_worktree, tmp_path):
         """Test that install_commands can be run multiple times safely"""
@@ -367,7 +368,7 @@ class TestInstallerGitignore:
         content = gitignore_path.read_text()
         assert ".agf/" in content
         assert ".claude/commands/agf/" in content
-        assert ".opencode/command/agf/" in content
+        assert ".opencode/skill/agf/" in content
 
     def test_ensure_gitignore_entry_does_not_duplicate_entries(self, mock_effective_config, mock_worktree, tmp_path):
         """Test that _ensure_gitignore_entry doesn't duplicate existing entries"""

@@ -105,12 +105,12 @@ class Installer:
             (
                 worktree_path / ".claude" / "commands",
                 namespace,
-                "../../.agf/claude/commands"
+                "../../.agf/claude/commands",
             ),
             (
-                worktree_path / ".opencode" / "command",
+                worktree_path / ".opencode" / "skill",
                 namespace,
-                "../../.agf/opencode/commands"
+                "../../.agf/opencode/skill",
             ),
         ]
 
@@ -175,8 +175,7 @@ class Installer:
 
         # Check if entry already exists (in any form)
         return any(
-            existing.rstrip("/") == entry_normalized
-            for existing in existing_entries
+            existing.rstrip("/") == entry_normalized for existing in existing_entries
         )
 
     def _add_gitignore_entries(self, gitignore_path: Path, entries: list[str]) -> None:
@@ -189,7 +188,8 @@ class Installer:
         """
         # Filter out entries that already exist
         entries_to_add = [
-            entry for entry in entries
+            entry
+            for entry in entries
             if not self._gitignore_has_entry(gitignore_path, entry)
         ]
 
@@ -215,7 +215,7 @@ class Installer:
         Ensure all required directories are listed in .gitignore.
 
         Adds entries for .agf/, .claude/commands/{namespace}/, and
-        .opencode/command/{namespace}/ to the worktree's .gitignore file.
+        .opencode/skill/{namespace}/ to the worktree's .gitignore file.
 
         Raises:
             ValueError: If worktree directory_path is None
@@ -231,7 +231,7 @@ class Installer:
         entries = [
             ".agf/",
             f".claude/commands/{namespace}/",
-            f".opencode/command/{namespace}/",
+            f".opencode/skill/{namespace}/",
         ]
 
         self._add_gitignore_entries(gitignore_path, entries)
