@@ -161,6 +161,28 @@ class TestMarkdownTaskSourceParsing:
         finally:
             temp_path.unlink()
 
+    def test_parses_worktree_with_new_agent_format(self):
+        """Test parsing worktree with new agent format {id,agent}"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("""## Git Worktree ai-feature {TST-001,opencode}
+
+- [] Task one
+- [] Task two
+""")
+            temp_path = Path(f.name)
+
+        try:
+            source = MarkdownTaskSource(str(temp_path))
+            worktrees = source.list_worktrees()
+
+            assert len(worktrees) == 1
+            assert worktrees[0].worktree_name == "ai-feature"
+            assert worktrees[0].worktree_id == "TST-001"
+            assert worktrees[0].agent == "opencode"
+            assert len(worktrees[0].tasks) == 2
+        finally:
+            temp_path.unlink()
+
     def test_parses_multiline_task_descriptions(self, multiline_tasks_file):
         """Test parsing tasks with multi-line descriptions"""
         source = MarkdownTaskSource(str(multiline_tasks_file))
@@ -341,6 +363,39 @@ class TestMarkdownTaskSourceHelpers:
         assert name == "feature-xyz"
         assert worktree_id == "PROJ-5678"
         assert agent == "anthropic"
+
+    def test_parse_worktree_header_new_format_with_agent(self):
+        """Test parsing worktree header with new format {worktree_id,agent}"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree my-feature {TST-001,opencode}"
+        )
+
+        assert name == "my-feature"
+        assert worktree_id == "TST-001"
+        assert agent == "opencode"
+
+    def test_parse_worktree_header_new_format_with_spaces(self):
+        """Test parsing worktree header with new format and spaces"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree my-feature {TST-001 , opencode }"
+        )
+
+        assert name == "my-feature"
+        assert worktree_id == "TST-001"
+        assert agent == "opencode"
+
+    def test_parse_worktree_header_new_format_only_id(self):
+        """Test parsing worktree header with new format but only worktree_id"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree my-feature {TST-002}"
+        )
+
+        assert name == "my-feature"
+        assert worktree_id == "TST-002"
+        assert agent is None
 
     def test_parse_tags_extracts_correctly(self):
         """Test tag extraction from description"""
