@@ -346,6 +346,12 @@ def validate_project_dir(
     default=False,
     help="Run in testing mode (skip SDLC phases, only create empty commits)",
 )
+@click.option(
+    "--install-only",
+    is_flag=True,
+    default=False,
+    help="Install AGF commands to the project directory and exit without processing tasks",
+)
 def main(
     tasks_file: Path,
     project_dir: Path,
@@ -358,6 +364,7 @@ def main(
     branch_prefix: str | None,
     commands_namespace: str | None,
     testing: bool,
+    install_only: bool,
 ) -> None:
     """Process tasks from a task list continuously or on-demand.
 
@@ -408,6 +415,7 @@ def main(
         branch_prefix=branch_prefix,
         commands_namespace=commands_namespace,
         testing=testing,
+        install_only=install_only,
     )
 
     # Merge configurations with precedence: CLI > AGF > defaults
@@ -420,11 +428,34 @@ def main(
     log(f"Dry run: {dry_run}")
     log(f"Single run: {single_run}")
     log(f"Testing mode: {testing}")
+    log(f"Install only: {effective_config.install_only}")
     log(f"Concurrent tasks: {effective_config.concurrent_tasks}")
     log(f"Agent: {effective_config.agent}")
     log(f"Model type: {effective_config.model_type}")
     log(f"Branch prefix: {effective_config.branch_prefix or 'USER env var'}")
     log(f"Commands namespace: {effective_config.commands_namespace}")
+
+    # Install-only mode
+    if effective_config.install_only:
+        log("Running in install-only mode")
+
+        # Create a temporary worktree pointing to project directory
+        from agf.installer import Installer
+
+        temp_worktree = Worktree(
+            worktree_name="project",
+            worktree_id=None,
+            tasks=[],
+            directory_path=str(project_dir),
+        )
+
+        # Install commands
+        installer = Installer(effective_config, temp_worktree)
+        installer.install_commands()
+
+        log(f"AGF commands installed to: {project_dir}")
+        log("Install-only completed, exiting")
+        return
 
     # Initialize TaskManager
     try:

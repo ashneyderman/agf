@@ -190,6 +190,7 @@ class TestProcessTask:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -232,6 +233,7 @@ class TestProcessTask:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -270,6 +272,7 @@ class TestProcessTask:
             dry_run=False,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -309,6 +312,7 @@ class TestProcessTask:
             dry_run=False,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -382,6 +386,7 @@ class TestProcessTasksParallel:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -431,6 +436,7 @@ class TestProcessTasksParallel:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -473,6 +479,7 @@ class TestProcessTasksParallel:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -509,6 +516,7 @@ class TestRunIteration:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -546,6 +554,7 @@ class TestRunIteration:
             dry_run=True,
             single_run=True,
             testing=False,
+            install_only=False,
             agent="claude-code",
             model_type="standard",
             branch_prefix=None,
@@ -884,3 +893,104 @@ class TestCLI:
         # The script should either succeed (if it parses the file as empty)
         # or exit with error code 1 (if initialization fails)
         assert result.exit_code in [0, 1]
+
+    def test_install_only_option_in_help(self):
+        """Test that --install-only appears in help."""
+        runner = CliRunner()
+        result = runner.invoke(main, ["--help"])
+
+        assert result.exit_code == 0
+        assert "--install-only" in result.output
+
+    def test_install_only_mode(self):
+        """Test install-only mode installs commands and exits."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            Path("tasks.md").write_text("# Tasks\n")
+            result = runner.invoke(
+                main,
+                [
+                    "--tasks-file",
+                    "tasks.md",
+                    "--project-dir",
+                    ".",
+                    "--install-only",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert "Running in install-only mode" in result.output
+        assert "Install-only completed" in result.output
+        # Should NOT initialize TaskManager or process tasks
+        assert "Initialized TaskManager" not in result.output
+
+    def test_install_only_creates_agf_directory(self):
+        """Test that install-only creates .agf directory."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            Path("tasks.md").write_text("# Tasks\n")
+
+            agf_dir = Path(".agf")
+            assert not agf_dir.exists()
+
+            result = runner.invoke(
+                main,
+                [
+                    "--tasks-file",
+                    "tasks.md",
+                    "--project-dir",
+                    ".",
+                    "--install-only",
+                ],
+            )
+
+        assert result.exit_code == 0
+        assert agf_dir.exists()
+        assert (agf_dir / "claude" / "commands").exists()
+        assert (agf_dir / "opencode" / "skill").exists()
+
+    def test_install_only_creates_symlinks(self):
+        """Test that install-only creates command symlinks."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            Path("tasks.md").write_text("# Tasks\n")
+
+            result = runner.invoke(
+                main,
+                [
+                    "--tasks-file",
+                    "tasks.md",
+                    "--project-dir",
+                    ".",
+                    "--install-only",
+                ],
+            )
+
+        assert result.exit_code == 0
+        claude_symlink = Path(".claude") / "commands" / "agf"
+        opencode_symlink = Path(".opencode") / "skill" / "agf"
+        assert claude_symlink.is_symlink()
+        assert opencode_symlink.is_symlink()
+
+    def test_install_only_updates_gitignore(self):
+        """Test that install-only updates .gitignore."""
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            Path("tasks.md").write_text("# Tasks\n")
+
+            result = runner.invoke(
+                main,
+                [
+                    "--tasks-file",
+                    "tasks.md",
+                    "--project-dir",
+                    ".",
+                    "--install-only",
+                ],
+            )
+
+        assert result.exit_code == 0
+        gitignore = Path(".gitignore")
+        assert gitignore.exists()
+        content = gitignore.read_text()
+        assert ".agf/" in content
