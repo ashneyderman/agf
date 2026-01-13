@@ -69,7 +69,7 @@ class TaskManager:
         - For equivalent tasks: preserves task_id from in-memory
         - For equivalent tasks: updates description, tags, sequence_number, status,
           and commit_sha from source (source is primary)
-        - For equivalent worktrees: updates worktree_id, directory_path, and head_sha from source
+        - For equivalent worktrees: updates worktree_id, agent, directory_path, and head_sha from source
 
         Additions and Removals:
         - New worktrees/tasks from source are added
@@ -270,6 +270,7 @@ class TaskManager:
                 reconciled_wt = Worktree(
                     worktree_name=source_wt.worktree_name,
                     worktree_id=source_wt.worktree_id,  # Update from source
+                    agent=source_wt.agent,  # Update from source
                     tasks=reconciled_tasks,
                     directory_path=source_wt.directory_path,  # Update from source
                     head_sha=source_wt.head_sha,  # Update from source

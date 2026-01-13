@@ -2299,3 +2299,352 @@ class TestWorkflowTaskHandlerPRCreation:
         last_call = mock_agent_runner.run_command.call_args_list[-1]
         command_template = last_call[1]["command_template"]
         assert command_template.prompt == "create-commit"
+
+
+class TestWorkflowTaskHandlerWorktreeAgentOverride:
+    """Test worktree agent override functionality."""
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_execute_command_uses_worktree_agent(
+        self, mock_agent_runner, mock_task_manager, sample_task
+    ):
+        """Test that _execute_command uses worktree.agent when set."""
+        # Create config with multiple agents
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+                "opencode": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config, mock_task_manager)
+
+        # Create worktree with agent override
+        worktree_with_agent = Worktree(
+            worktree_name="test-feature", agent="opencode"
+        )
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="opencode",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Create a command template
+        from agf.agent.models import CommandTemplate
+
+        command_template = CommandTemplate(
+            namespace="agf",
+            prompt="test",
+            params=["param1"],
+            model="standard",
+            json_output=False,
+        )
+
+        # Call _execute_command
+        result = handler._execute_command(worktree_with_agent, command_template)
+
+        # Verify result
+        assert result.success is True
+        assert result.agent_name == "opencode"
+
+        # Verify AgentRunner was called with opencode agent
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+        assert call_args[1]["agent_name"] == "opencode"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_execute_command_uses_config_agent_when_worktree_agent_none(
+        self, mock_agent_runner, mock_task_manager, sample_worktree
+    ):
+        """Test that _execute_command uses config.agent when worktree.agent is None."""
+        # Create config
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config, mock_task_manager)
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Create a command template
+        from agf.agent.models import CommandTemplate
+
+        command_template = CommandTemplate(
+            namespace="agf",
+            prompt="test",
+            params=["param1"],
+            model="standard",
+            json_output=False,
+        )
+
+        # Call _execute_command with worktree that has no agent override
+        result = handler._execute_command(sample_worktree, command_template)
+
+        # Verify result
+        assert result.success is True
+        assert result.agent_name == "claude-code"
+
+        # Verify AgentRunner was called with claude-code agent
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+        assert call_args[1]["agent_name"] == "claude-code"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_execute_command_fallback_to_config_agent_on_invalid_worktree_agent(
+        self, mock_agent_runner, mock_task_manager
+    ):
+        """Test that _execute_command falls back to config.agent when worktree.agent is invalid."""
+        # Create config
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config, mock_task_manager)
+
+        # Create worktree with invalid agent name
+        worktree_with_invalid_agent = Worktree(
+            worktree_name="test-feature", agent="nonexistent-agent"
+        )
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run_command.return_value = mock_result
+
+        # Create a command template
+        from agf.agent.models import CommandTemplate
+
+        command_template = CommandTemplate(
+            namespace="agf",
+            prompt="test",
+            params=["param1"],
+            model="standard",
+            json_output=False,
+        )
+
+        # Call _execute_command
+        result = handler._execute_command(worktree_with_invalid_agent, command_template)
+
+        # Verify result - should use fallback agent
+        assert result.success is True
+        assert result.agent_name == "claude-code"
+
+        # Verify AgentRunner was called with claude-code agent (fallback)
+        mock_agent_runner.run_command.assert_called_once()
+        call_args = mock_agent_runner.run_command.call_args
+        assert call_args[1]["agent_name"] == "claude-code"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_with_worktree_agent_override(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_task_manager,
+        sample_task,
+    ):
+        """Test that handle_task uses worktree.agent override throughout execution."""
+        # Create config with multiple agents
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+                "opencode": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config, mock_task_manager)
+
+        # Create worktree with agent override
+        worktree_with_agent = Worktree(
+            worktree_name="test-feature", agent="opencode"
+        )
+
+        # Add feature tag to task
+        sample_task.tags = ["feature"]
+
+        # Mock successful agent execution for all three phases
+        feature_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="opencode",
+            json_output={"path": "specs/abc123-feature-test.md"},
+        )
+        implement_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="opencode",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="opencode",
+            json_output={"commit_sha": "abc123def456"},
+        )
+        mock_agent_runner.run_command.side_effect = [
+            feature_result,
+            implement_result,
+            commit_result,
+        ]
+
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="abc123",
+                    description="Test task description",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="def456",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(worktree_with_agent, sample_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify all agent calls used opencode agent
+        assert mock_agent_runner.run_command.call_count == 3
+        for call in mock_agent_runner.run_command.call_args_list:
+            assert call[1]["agent_name"] == "opencode"

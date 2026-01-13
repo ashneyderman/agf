@@ -216,19 +216,32 @@ class WorkflowTaskHandler:
             raise
 
     def _execute_command(
-        self, worktree_path: str, command_template: CommandTemplate
+        self, worktree: Worktree, command_template: CommandTemplate
     ) -> AgentResult:
         """Execute the command with the agent in the specified worktree.
 
         Args:
-            worktree_path: Path to the worktree directory
+            worktree: Worktree object containing worktree metadata and agent override
             command_template: CommandTemplate object containing command metadata
 
         Returns:
             AgentResult containing execution status and output
         """
-        # Resolve model from configuration
-        agent_config = self.config.agents[self.config.agent]
+        worktree_path = self._get_worktree_path(worktree)
+
+        # Determine the effective agent: use worktree.agent if set, otherwise config.agent
+        effective_agent = worktree.agent if worktree.agent else self.config.agent
+
+        # Validate that the effective agent exists in config
+        if effective_agent not in self.config.agents:
+            self._log(
+                f"Warning: Agent '{effective_agent}' not found in configuration. "
+                f"Falling back to default agent '{self.config.agent}'"
+            )
+            effective_agent = self.config.agent
+
+        # Resolve model from configuration using effective agent
+        agent_config = self.config.agents[effective_agent]
         model = getattr(agent_config, command_template.model or self.config.model_type)
 
         # Create agent configuration
@@ -237,9 +250,9 @@ class WorkflowTaskHandler:
         )
 
         # Execute agent
-        self._log(f"Running agent command {self.config.agent} with model {model}")
+        self._log(f"Running agent command {effective_agent} with model {model}")
         result = AgentRunner.run_command(
-            agent_name=self.config.agent,
+            agent_name=effective_agent,
             command_template=command_template,
             config=agent_cfg,
         )
@@ -264,7 +277,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails or JSON parsing fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="plan",
@@ -272,7 +284,7 @@ class WorkflowTaskHandler:
             model=ModelType.THINKING,
             json_output=True,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.json_output["path"]
 
     def _run_chore(self, worktree: Worktree, task: Task) -> str:
@@ -288,7 +300,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails or JSON parsing fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="chore",
@@ -296,7 +307,7 @@ class WorkflowTaskHandler:
             model=ModelType.THINKING,
             json_output=True,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.json_output["path"]
 
     def _run_feature(self, worktree: Worktree, task: Task) -> str:
@@ -312,7 +323,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails or JSON parsing fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="feature",
@@ -320,7 +330,7 @@ class WorkflowTaskHandler:
             model=ModelType.THINKING,
             json_output=True,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.json_output["path"]
 
     def _run_implement(self, worktree: Worktree, task: Task, spec_path: str) -> str:
@@ -337,7 +347,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="implement",
@@ -345,7 +354,7 @@ class WorkflowTaskHandler:
             model=ModelType.STANDARD,
             json_output=False,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.output.strip()
 
     def _run_build(self, worktree: Worktree, task: Task) -> str:
@@ -361,7 +370,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="build",
@@ -369,7 +377,7 @@ class WorkflowTaskHandler:
             model=ModelType.STANDARD,
             json_output=False,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.output.strip()
 
     def _create_commit(self, worktree: Worktree, task: Task) -> dict:
@@ -385,7 +393,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails or JSON parsing fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="create-commit",
@@ -393,7 +400,7 @@ class WorkflowTaskHandler:
             model=ModelType.STANDARD,
             json_output=True,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.json_output
 
     def _create_empty_commit(self, worktree: Worktree, task: Task) -> dict:
@@ -409,7 +416,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails or JSON parsing fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="empty-commit",
@@ -417,7 +423,7 @@ class WorkflowTaskHandler:
             model=ModelType.STANDARD,
             json_output=True,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.json_output
 
     def _create_github_pr(self, worktree: Worktree, task: Task) -> str:
@@ -433,7 +439,6 @@ class WorkflowTaskHandler:
         Raises:
             Exception: If agent execution fails
         """
-        worktree_path = self._get_worktree_path(worktree)
         command_template = CommandTemplate(
             namespace=self.config.commands_namespace,
             prompt="create-github-pr",
@@ -441,7 +446,7 @@ class WorkflowTaskHandler:
             model=ModelType.STANDARD,
             json_output=False,
         )
-        result = self._execute_command(worktree_path, command_template)
+        result = self._execute_command(worktree, command_template)
         return result.output.strip()
 
     def _get_task_type(self, task: Task) -> str:

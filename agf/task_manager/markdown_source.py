@@ -10,7 +10,10 @@ class MarkdownTaskSource:
     TaskSource implementation that reads and updates tasks in Markdown files.
 
     Expects Markdown format:
-    ## Git Worktree <worktree-name> {<worktree_id>}
+    ## Git Worktree <worktree-name> {<worktree_id>,<agent>}
+
+    Legacy format also supported:
+    ## Git Worktree <worktree-name> {<worktree_id>} [@<agent>]
 
     - [<status>, <task_id>, <git_sha>] <description> {<tag1>, <tag2>}
     """
@@ -71,10 +74,11 @@ class MarkdownTaskSource:
                         worktrees.append(current_worktree)
 
                     # Parse new worktree
-                    worktree_name, worktree_id = self._parse_worktree_header(line)
+                    worktree_name, worktree_id, agent = self._parse_worktree_header(line)
                     current_worktree = Worktree(
                         worktree_name=worktree_name,
                         worktree_id=worktree_id,
+                        agent=agent,
                         tasks=[]
                     )
                     sequence_number = 0
@@ -140,7 +144,7 @@ class MarkdownTaskSource:
 
             for line in lines:
                 if line.startswith('## '):
-                    wt_name, _ = self._parse_worktree_header(line)
+                    wt_name, _, _ = self._parse_worktree_header(line)
                     current_worktree = wt_name
                     updated_lines.append(line)
                 elif line.strip().startswith('- [') and current_worktree == worktree_name:
@@ -180,7 +184,7 @@ class MarkdownTaskSource:
 
             for line in lines:
                 if line.startswith('## '):
-                    wt_name, _ = self._parse_worktree_header(line)
+                    wt_name, _, _ = self._parse_worktree_header(line)
                     current_worktree = wt_name
                     current_sequence = 0
                     updated_lines.append(line)
@@ -214,26 +218,51 @@ class MarkdownTaskSource:
         # Simply update status to FAILED
         self.update_task_status(worktree_name, task_id, TaskStatus.FAILED)
 
-    def _parse_worktree_header(self, line: str) -> tuple[str, str | None]:
+    def _parse_worktree_header(self, line: str) -> tuple[str, str | None, str | None]:
         """
         Parse worktree header line.
 
         Args:
-            line: Header line like "## Git Worktree feature-auth {SCHIP-7899}"
+            line: Header line like "## Git Worktree feature-auth {SCHIP-7899,opencode}" or
+                  "## Git Worktree feature-auth {SCHIP-7899} [@claude]" (legacy format)
 
         Returns:
-            Tuple of (worktree_name, worktree_id)
+            Tuple of (worktree_name, worktree_id, agent)
         """
         # Remove "##" and strip
         header = line[2:].strip()
 
-        # Extract worktree_id if present (in curly braces)
+        # Extract agent and worktree_id from curly braces
+        # New format: {worktree_id,agent} or {worktree_id}
+        # Legacy format: {worktree_id} [@agent]
+        agent = None
         worktree_id = None
-        match = re.search(r'\{([^}]+)\}', header)
-        if match:
-            worktree_id = match.group(1)
+
+        # Check for legacy format first: [@agent]
+        agent_match = re.search(r'\[@([^\]]+)\]', header)
+        if agent_match:
+            agent = agent_match.group(1)
+            # Remove the agent part from header
+            header = header[:agent_match.start()] + header[agent_match.end():]
+            header = header.strip()
+
+        # Try new format: {worktree_id,agent} or {worktree_id}
+        id_match = re.search(r'\{([^}]+)\}', header)
+        if id_match:
+            content = id_match.group(1)
+            # Check if there's a comma, indicating agent is included
+            if ',' in content:
+                parts = [p.strip() for p in content.split(',', 1)]
+                worktree_id = parts[0] if parts[0] else None
+                # Only use agent from braces if we didn't find it in [@...] format
+                if agent is None:
+                    agent = parts[1] if len(parts) > 1 and parts[1] else None
+            else:
+                worktree_id = content.strip() if content.strip() else None
+
             # Remove the worktree_id part from header
-            header = header[:match.start()].strip()
+            header = header[:id_match.start()] + header[id_match.end():]
+            header = header.strip()
 
         # Extract worktree name (after "Git Worktree")
         if header.startswith('Git Worktree '):
@@ -241,7 +270,7 @@ class MarkdownTaskSource:
         else:
             worktree_name = header
 
-        return worktree_name, worktree_id
+        return worktree_name, worktree_id, agent
 
     def _parse_task_lines(self, lines: list[str], sequence: int) -> Task | None:
         """
