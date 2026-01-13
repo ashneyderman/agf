@@ -139,6 +139,28 @@ class TestMarkdownTaskSourceParsing:
         assert worktrees[0].worktree_name == "test-worktree"
         assert worktrees[0].worktree_id is None
 
+    def test_parses_worktree_with_agent(self):
+        """Test parsing worktree with agent field"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+            f.write("""## Git Worktree ai-feature {AI-001} [@claude]
+
+- [] Task one
+- [] Task two
+""")
+            temp_path = Path(f.name)
+
+        try:
+            source = MarkdownTaskSource(str(temp_path))
+            worktrees = source.list_worktrees()
+
+            assert len(worktrees) == 1
+            assert worktrees[0].worktree_name == "ai-feature"
+            assert worktrees[0].worktree_id == "AI-001"
+            assert worktrees[0].agent == "claude"
+            assert len(worktrees[0].tasks) == 2
+        finally:
+            temp_path.unlink()
+
     def test_parses_multiline_task_descriptions(self, multiline_tasks_file):
         """Test parsing tasks with multi-line descriptions"""
         source = MarkdownTaskSource(str(multiline_tasks_file))
@@ -270,20 +292,55 @@ class TestMarkdownTaskSourceHelpers:
     def test_parse_worktree_header_with_worktree_id(self):
         """Test parsing worktree header with worktree_id"""
         source = MarkdownTaskSource("dummy.md")
-        name, worktree_id = source._parse_worktree_header(
+        name, worktree_id, agent = source._parse_worktree_header(
             "## Git Worktree my-feature {AF123}"
         )
 
         assert name == "my-feature"
         assert worktree_id == "AF123"
+        assert agent is None
 
     def test_parse_worktree_header_without_worktree_id(self):
         """Test parsing worktree header without worktree_id"""
         source = MarkdownTaskSource("dummy.md")
-        name, worktree_id = source._parse_worktree_header("## Git Worktree my-feature")
+        name, worktree_id, agent = source._parse_worktree_header("## Git Worktree my-feature")
 
         assert name == "my-feature"
         assert worktree_id is None
+        assert agent is None
+
+    def test_parse_worktree_header_with_agent(self):
+        """Test parsing worktree header with agent"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree my-feature {AF123} [@claude]"
+        )
+
+        assert name == "my-feature"
+        assert worktree_id == "AF123"
+        assert agent == "claude"
+
+    def test_parse_worktree_header_with_agent_no_id(self):
+        """Test parsing worktree header with agent but no worktree_id"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree my-feature [@openai]"
+        )
+
+        assert name == "my-feature"
+        assert worktree_id is None
+        assert agent == "openai"
+
+    def test_parse_worktree_header_full_format(self):
+        """Test parsing worktree header with all fields"""
+        source = MarkdownTaskSource("dummy.md")
+        name, worktree_id, agent = source._parse_worktree_header(
+            "## Git Worktree feature-xyz {PROJ-5678} [@anthropic]"
+        )
+
+        assert name == "feature-xyz"
+        assert worktree_id == "PROJ-5678"
+        assert agent == "anthropic"
 
     def test_parse_tags_extracts_correctly(self):
         """Test tag extraction from description"""

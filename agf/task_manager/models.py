@@ -47,6 +47,7 @@ class Worktree(BaseModel):
 
     worktree_name: str
     worktree_id: str | None = None
+    agent: str | None = None
     tasks: list[Task] = Field(default_factory=list)
     directory_path: str | None = None
     head_sha: str | None = None

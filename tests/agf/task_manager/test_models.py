@@ -116,3 +116,23 @@ def test_worktree_id_can_be_set():
 
     assert worktree.worktree_id == "PROJ-1234"
     assert worktree.worktree_name == "feature-xyz"
+
+
+def test_worktree_agent_field():
+    """Test that agent field can be set and retrieved correctly"""
+    worktree = Worktree(
+        worktree_name="feature-ai",
+        worktree_id="AI-5678",
+        agent="claude"
+    )
+
+    assert worktree.agent == "claude"
+    assert worktree.worktree_name == "feature-ai"
+    assert worktree.worktree_id == "AI-5678"
+
+
+def test_worktree_agent_defaults_to_none():
+    """Test that agent field defaults to None"""
+    worktree = Worktree(worktree_name="test")
+
+    assert worktree.agent is None

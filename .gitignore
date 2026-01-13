@@ -11,3 +11,5 @@ wheels/
 .venv/
 .worktrees/
 .agf/
+.claude/commands/agf/
+.opencode/skill/agf/
