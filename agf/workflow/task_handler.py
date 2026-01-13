@@ -380,6 +380,55 @@ class WorkflowTaskHandler:
         result = self._execute_command(worktree, command_template)
         return result.output.strip()
 
+    def _run_prompt(self, worktree: Worktree, task: Task) -> AgentResult:
+        """Execute a direct prompt with the agent and return the result.
+
+        Args:
+            worktree: Worktree object containing worktree metadata and agent override
+            task: Task object containing task metadata
+
+        Returns:
+            AgentResult containing execution status and output
+
+        Raises:
+            Exception: If agent execution fails
+        """
+        worktree_path = self._get_worktree_path(worktree)
+
+        # Determine the effective agent: use worktree.agent if set, otherwise config.agent
+        effective_agent = worktree.agent if worktree.agent else self.config.agent
+
+        # Validate that the effective agent exists in config
+        if effective_agent not in self.config.agents:
+            self._log(
+                f"Warning: Agent '{effective_agent}' not found in configuration. "
+                f"Falling back to default agent '{self.config.agent}'"
+            )
+            effective_agent = self.config.agent
+
+        # Resolve model from configuration using STANDARD as default
+        agent_config_model = self.config.agents[effective_agent]
+        model = getattr(agent_config_model, ModelType.STANDARD)
+
+        # Create agent configuration
+        agent_cfg = AgentConfig(
+            working_dir=worktree_path, skip_permissions=True, logger=self._log
+        )
+
+        # Execute agent with raw prompt
+        self._log(f"Running agent prompt {effective_agent} with model {model}")
+        result = AgentRunner.run(
+            agent_name=effective_agent,
+            prompt=task.description,
+            config=agent_cfg,
+        )
+        self._log(
+            f"Agent execution completed: success={result.success}, exit_code={result.exit_code}"
+        )
+        self._log(f"output={result.output}")
+
+        return result
+
     def _create_commit(self, worktree: Worktree, task: Task) -> dict:
         """Execute the create-commit prompt and return commit information.
 
@@ -456,10 +505,10 @@ class WorkflowTaskHandler:
             task: Task object containing tags
 
         Returns:
-            Task type string ("chore", "feature", "plan", or "build").
+            Task type string ("chore", "feature", "plan", "build", or "prompt").
             Defaults to "plan" if no valid task type tag is found.
         """
-        valid_types = ["chore", "feature", "plan", "build"]
+        valid_types = ["chore", "feature", "plan", "build", "prompt"]
         for tag in task.tags:
             if tag in valid_types:
                 return tag
@@ -489,6 +538,7 @@ class WorkflowTaskHandler:
         3. If testing mode: create empty commit and return
         4. Otherwise: Detect task type and run appropriate workflow:
            - For "build" tasks: run build phase -> commit phase
+           - For "prompt" tasks: run prompt phase -> commit phase
            - For other tasks: run planning phase (plan/chore/feature) -> implementation phase -> commit phase
         5. Update task status to COMPLETED with commit SHA
         6. Auto-create GitHub PR if all tasks completed
@@ -552,6 +602,19 @@ class WorkflowTaskHandler:
                     self._run_build(worktree, task)
                 except Exception as e:
                     raise Exception(f"Build phase failed: {str(e)}") from e
+
+                # Phase 3: Commit
+                try:
+                    commit_info = self._create_commit(worktree, task)
+                    commit_sha = commit_info.get("commit_sha")
+                except Exception as e:
+                    raise Exception(f"Commit phase failed: {str(e)}") from e
+            elif task_type == "prompt":
+                # Prompt workflow: run prompt phase -> commit phase
+                try:
+                    self._run_prompt(worktree, task)
+                except Exception as e:
+                    raise Exception(f"Prompt phase failed: {str(e)}") from e
 
                 # Phase 3: Commit
                 try:

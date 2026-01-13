@@ -1017,6 +1017,137 @@ class TestWorkflowTaskHandlerPromptWrappers:
         assert command_template.model == "thinking"
         assert command_template.json_output is True
 
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_prompt_success(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test successful prompt execution."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed successfully",
+            exit_code=0,
+            duration_seconds=15.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_prompt(sample_worktree, sample_task)
+
+        # Verify result
+        assert result.success is True
+        assert result.output == "Task completed successfully"
+        assert result.agent_name == "claude-code"
+
+        # Verify AgentRunner.run was called with correct parameters
+        mock_agent_runner.run.assert_called_once()
+        call_args = mock_agent_runner.run.call_args
+
+        # Verify the agent and prompt
+        assert call_args[1]["agent_name"] == "claude-code"
+        assert call_args[1]["prompt"] == "Test task description"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_prompt_uses_worktree_agent(
+        self, mock_agent_runner, mock_task_manager, sample_task
+    ):
+        """Test prompt execution uses worktree.agent override."""
+        # Create config with multiple agents
+        agf_config = AGFConfig(
+            worktrees=".worktrees",
+            concurrent_tasks=5,
+            agent="claude-code",
+            model_type="standard",
+            agents={
+                "claude-code": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+                "opencode": AgentModelConfig(
+                    thinking="opus", standard="sonnet", light="haiku"
+                ),
+            },
+        )
+        cli_config = CLIConfig(
+            tasks_file=Path("/tmp/tasks.md"), project_dir=Path("/tmp/project")
+        )
+        config = EffectiveConfig(
+            worktrees=agf_config.worktrees,
+            concurrent_tasks=agf_config.concurrent_tasks,
+            agents=agf_config.agents,
+            tasks_file=cli_config.tasks_file,
+            project_dir=cli_config.project_dir,
+            agf_config=None,
+            sync_interval=30,
+            dry_run=False,
+            single_run=False,
+            testing=False,
+            agent=agf_config.agent,
+            model_type=agf_config.model_type,
+            branch_prefix=None,
+            commands_namespace="agf",
+        )
+
+        handler = WorkflowTaskHandler(config, mock_task_manager)
+
+        # Create worktree with agent override
+        worktree_with_agent = Worktree(
+            worktree_name="test-feature", agent="opencode"
+        )
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="opencode",
+        )
+        mock_agent_runner.run.return_value = mock_result
+
+        # Call the wrapper
+        result = handler._run_prompt(worktree_with_agent, sample_task)
+
+        # Verify result
+        assert result.success is True
+        assert result.agent_name == "opencode"
+
+        # Verify AgentRunner.run was called with opencode agent
+        mock_agent_runner.run.assert_called_once()
+        call_args = mock_agent_runner.run.call_args
+        assert call_args[1]["agent_name"] == "opencode"
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    def test_run_prompt_uses_config_agent_fallback(
+        self, mock_agent_runner, mock_config, mock_task_manager, sample_worktree, sample_task
+    ):
+        """Test prompt execution falls back to config.agent when worktree.agent is None."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Mock successful agent execution
+        mock_result = AgentResult(
+            success=True,
+            output="Task completed",
+            exit_code=0,
+            duration_seconds=10.0,
+            agent_name="claude-code",
+        )
+        mock_agent_runner.run.return_value = mock_result
+
+        # Call the wrapper with worktree that has no agent override
+        result = handler._run_prompt(sample_worktree, sample_task)
+
+        # Verify result
+        assert result.success is True
+        assert result.agent_name == "claude-code"
+
+        # Verify AgentRunner.run was called with config agent
+        mock_agent_runner.run.assert_called_once()
+        call_args = mock_agent_runner.run.call_args
+        assert call_args[1]["agent_name"] == "claude-code"
+
 
 class TestWorkflowTaskHandlerTaskType:
     """Test task type detection methods."""
@@ -1101,6 +1232,26 @@ class TestWorkflowTaskHandlerTaskType:
             tags=["urgent", "build", "backend"],
         )
         assert handler._get_task_type(task) == "build"
+
+    def test_get_task_type_prompt(self, mock_config, mock_task_manager):
+        """Test task type detection for prompt tag."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test09",
+            description="Test task",
+            tags=["prompt"],
+        )
+        assert handler._get_task_type(task) == "prompt"
+
+    def test_get_task_type_prompt_with_other_tags(self, mock_config, mock_task_manager):
+        """Test task type detection for prompt tag mixed with other non-type tags."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+        task = Task(
+            task_id="test10",
+            description="Test task",
+            tags=["urgent", "prompt", "backend"],
+        )
+        assert handler._get_task_type(task) == "prompt"
 
 
 class TestWorkflowTaskHandlerSDLCFlow:
@@ -1726,6 +1877,127 @@ class TestWorkflowTaskHandlerSDLCFlow:
         mock_task_manager.mark_task_error.assert_called_once()
         args = mock_task_manager.mark_task_error.call_args[0]
         assert "build phase failed" in args[2].lower()
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_prompt_workflow_success(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test successful SDLC flow for prompt task."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a prompt task
+        prompt_task = Task(
+            task_id="prm001",
+            description="Fix all type errors in the codebase",
+            tags=["prompt"],
+        )
+
+        # Mock agent execution results for prompt and commit phases only
+        prompt_result = AgentResult(
+            success=True,
+            output="Fixed 5 type errors successfully",
+            exit_code=0,
+            duration_seconds=25.0,
+            agent_name="claude-code",
+        )
+        commit_result = AgentResult(
+            success=True,
+            output="",
+            exit_code=0,
+            duration_seconds=5.0,
+            agent_name="claude-code",
+            json_output={
+                "commit_sha": "prompt123",
+                "commit_message": "fix: resolve type errors",
+            },
+        )
+
+        # Set up mock to return different results for each call
+        # Prompt workflow should only call agent 2 times (prompt, commit)
+        mock_agent_runner.run.return_value = prompt_result
+        mock_agent_runner.run_command.return_value = commit_result
+
+        # Mock task_manager.get_worktree to return worktree with incomplete tasks
+        # so PR creation is not triggered
+        worktree_with_incomplete_tasks = Worktree(
+            worktree_name="test-feature",
+            tasks=[
+                Task(
+                    task_id="prm001",
+                    description="Fix all type errors in the codebase",
+                    status=TaskStatus.COMPLETED,
+                ),
+                Task(
+                    task_id="prm002",
+                    description="Another task",
+                    status=TaskStatus.NOT_STARTED,
+                ),
+            ],
+        )
+        mock_task_manager.get_worktree.return_value = worktree_with_incomplete_tasks
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, prompt_task)
+
+        # Verify success
+        assert result is True
+
+        # Verify agent was called exactly 2 times (prompt via run(), commit via run_command())
+        mock_agent_runner.run.assert_called_once()
+        mock_agent_runner.run_command.assert_called_once()
+
+        # Verify task status updates
+        assert mock_task_manager.update_task_status.call_count == 2
+        # First call: IN_PROGRESS
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "prm001", TaskStatus.IN_PROGRESS
+        )
+        # Second call: COMPLETED with commit SHA
+        mock_task_manager.update_task_status.assert_any_call(
+            "test-feature", "prm001", TaskStatus.COMPLETED, commit_sha="prompt123"
+        )
+
+    @patch("agf.workflow.task_handler.AgentRunner")
+    @patch("agf.workflow.task_handler.mk_worktree")
+    def test_handle_task_prompt_workflow_failure(
+        self,
+        mock_mk_worktree,
+        mock_agent_runner,
+        mock_config,
+        mock_task_manager,
+        sample_worktree,
+    ):
+        """Test task handling fails when prompt phase fails."""
+        handler = WorkflowTaskHandler(mock_config, mock_task_manager)
+
+        # Create a prompt task
+        prompt_task = Task(
+            task_id="prm002",
+            description="Do something",
+            tags=["prompt"],
+        )
+
+        # Mock prompt phase to raise an exception
+        mock_agent_runner.run.side_effect = Exception("Prompt execution failed")
+
+        # Mock worktree doesn't exist yet
+        with patch("os.path.exists", return_value=False):
+            result = handler.handle_task(sample_worktree, prompt_task)
+
+        # Verify failure
+        assert result is False
+
+        # Verify error recorded
+        mock_task_manager.mark_task_error.assert_called_once()
+        args = mock_task_manager.mark_task_error.call_args[0]
+        assert "prompt phase failed" in args[2].lower()
 
 
 class TestWorkflowTaskHandlerTestingMode:
