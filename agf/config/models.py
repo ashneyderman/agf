@@ -149,6 +149,7 @@ class CLIConfig(BaseModel):
         branch_prefix: Branch prefix override (None means use AGF config, default: None)
         commands_namespace: Commands namespace override (None means use AGF config, default: None)
         testing: Testing mode flag - skip SDLC phases, only create empty commits (default: False)
+        install_only: Install commands only mode - install AGF commands and exit (default: False)
 
     Example:
         ```python
@@ -172,6 +173,7 @@ class CLIConfig(BaseModel):
     branch_prefix: str | None = None
     commands_namespace: str | None = None
     testing: bool = False
+    install_only: bool = False
 
     @field_validator("sync_interval")
     @classmethod
@@ -201,6 +203,7 @@ class EffectiveConfig(BaseModel):
         dry_run: Read-only mode flag
         single_run: Run once and exit flag
         testing: Testing mode flag - skip SDLC phases, only create empty commits
+        install_only: Install commands only mode flag
 
     Resolved fields (after applying precedence):
         agent: Final agent to use (CLI override or AGF config)
@@ -237,6 +240,7 @@ class EffectiveConfig(BaseModel):
     dry_run: bool
     single_run: bool
     testing: bool
+    install_only: bool
 
     # Resolved values (after precedence)
     agent: str

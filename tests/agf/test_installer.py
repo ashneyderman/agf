@@ -28,6 +28,7 @@ def mock_effective_config():
         dry_run=False,
         single_run=False,
         testing=False,
+        install_only=False,
         # Resolved values
         agent="claude-code",
         model_type="standard",
