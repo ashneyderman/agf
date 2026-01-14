@@ -23,7 +23,7 @@ agf_id: $1
 
 - push all changes to remote branch: `git push --set-upstream origin $(git_current_branch)`
 - IF PR already exists (check using `gh pr view`): print "PR already exists"
-  ELSE: create PR on github using `gh pr create --title <pr_title> --body <pr_body>` command.
+  ELSE: create draft PR using `gh pr create --draft --title <pr_title> --body <pr_body>`.
 
 # Report
 

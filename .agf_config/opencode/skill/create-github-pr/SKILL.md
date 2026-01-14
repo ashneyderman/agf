@@ -29,7 +29,7 @@ Extract the `agf_id` parameter to use as a prefix for the PR title.
 5. **Create or Display PR**:
    - Check if PR already exists using `gh pr view`
    - IF PR exists: Print "PR already exists"
-   - ELSE: Create PR using `gh pr create --title "<pr_title>" --body "<pr_body>"`
+   - ELSE: Create draft PR using `gh pr create --draft --title "<pr_title>" --body "<pr_body>"`
 
 ## Report
 
